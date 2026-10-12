@@ -1,0 +1,121 @@
+{% extends "base.html" %}
+{% block title %}Students — AMUAA Admin{% endblock %}
+
+{% block content %}
+{% set nav_active = "students" %}
+{% set page_title = "Students" %}
+{% set page_subtitle = "Everyone with an admission number" %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+    {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+            <div class="card">
+                <h2>Search &amp; filter</h2>
+                <form method="GET" action="{{ url_for('admin.students_list') }}" class="filter-bar">
+                    <div class="form-group">
+                        <label for="s-q">Search</label>
+                        <input id="s-q" name="q" value="{{ filters.q }}" maxlength="120"
+                            placeholder="Name, admission no, email or phone">
+                    </div>
+                    <div class="form-group">
+                        <label for="s-course">Course</label>
+                        <select id="s-course" name="course">
+                            <option value="">All courses</option>
+                            {% for c in courses %}
+                            <option value="{{ c }}" {% if filters.course == c %}selected{% endif %}>{{ c }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="s-year">Academic year</label>
+                        <select id="s-year" name="year">
+                            <option value="">All years</option>
+                            {% for y in years %}
+                            <option value="{{ y }}" {% if filters.year == y %}selected{% endif %}>{{ y }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="s-status">Status</label>
+                        <select id="s-status" name="status">
+                            <option value="">All statuses</option>
+                            {% for st in statuses %}
+                            <option value="{{ st }}" {% if filters.status == st %}selected{% endif %}>{{ st|capitalize }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group filter-actions">
+                        <button class="btn-primary" type="submit">Filter</button>
+                        <a class="btn-secondary" href="{{ url_for('admin.students_list') }}">Clear</a>
+                    </div>
+                </form>
+            </div>
+
+            <div class="section-gap card full-width">
+                <h2>Admitted students ({{ students|length }})</h2>
+                {% if students %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>Admission No</th>
+                                <th>Student</th>
+                                <th>Course</th>
+                                <th>Year</th>
+                                <th>Mode</th>
+                                <th>Status</th>
+                                <th>Balance</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in students %}
+                            {% set s = row.student %}
+                            {% set info = row.info %}
+                            <tr>
+                                <td><code>{{ s.admission_number }}</code></td>
+                                <td>
+                                    <strong>{{ s.full_name }}</strong>
+                                    <div class="muted">{{ s.phone or '' }}{% if s.email %} · {{ s.email }}{% endif %}</div>
+                                </td>
+                                <td>{{ s.course }}</td>
+                                <td>{{ s.academic_year or '—' }}</td>
+                                <td>{{ s.study_mode or '—' }}</td>
+                                <td><span class="badge badge-{{ s.student_status or 'active' }}">{{ s.student_status or 'active' }}</span></td>
+                                <td>
+                                    {% if info.balance > 0 %}
+                                    <span class="badge badge-rejected">KES {{ '{:,.0f}'.format(info.balance) }}</span>
+                                    {% else %}
+                                    <span class="badge badge-verified">Cleared</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <div class="row-actions">
+                                        <a class="btn-view"
+                                            href="{{ url_for('admin.student_profile', application_id=s.id) }}">Open</a>
+                                        <a class="btn-secondary btn-sm" target="_blank"
+                                            href="{{ url_for('admin.student_qr_card', application_id=s.id) }}">QR</a>
+                                        <a class="btn-secondary btn-sm" target="_blank"
+                                            href="{{ url_for('admin.admission_letter', application_id=s.id) }}">Letter</a>
+                                    </div>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="empty-hint">
+                    No admitted students match your search. Admitted applicants appear here automatically once an
+                    admission letter is issued from the
+                    <a href="{{ url_for('admin.applications') }}">Applications</a> page.
+                </p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

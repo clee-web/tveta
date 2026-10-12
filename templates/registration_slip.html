@@ -1,0 +1,175 @@
+{% extends "base.html" %}
+{% block title %}Registration Fee Slip — {{ application.full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .print-page {
+        background: #fff;
+        max-width: 720px;
+        margin: 30px auto;
+        padding: 40px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, .12);
+        color: #1e293b;
+    }
+
+    .print-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border-bottom: 3px solid #762b3a;
+        padding-bottom: 16px;
+        margin-bottom: 24px;
+    }
+
+    .print-head img {
+        width: 104px;
+        height: 62px;
+        object-fit: contain;
+    }
+
+    .print-head h1 {
+        font-size: 22px;
+        margin: 0;
+        color: #762b3a;
+    }
+
+    .print-head p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .print-title {
+        text-align: center;
+        font-size: 16px;
+        letter-spacing: 2px;
+        text-transform: uppercase;
+        margin-bottom: 22px;
+        color: #762b3a;
+    }
+
+    .print-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin-bottom: 22px;
+    }
+
+    .print-table th,
+    .print-table td {
+        border: 1px solid #e2e8f0;
+        padding: 10px 12px;
+        text-align: left;
+    }
+
+    .print-table th {
+        background: #f8fafc;
+        width: 42%;
+        color: #475569;
+    }
+
+    .amount-box {
+        background: #fdf6e3;
+        border: 2px dashed #d8ae67;
+        padding: 18px;
+        text-align: center;
+        margin-bottom: 22px;
+    }
+
+    .amount-box span {
+        display: block;
+        font-size: 12px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #92400e;
+    }
+
+    .amount-box strong {
+        font-size: 30px;
+        color: #762b3a;
+    }
+
+    .print-note {
+        font-size: 12px;
+        color: #64748b;
+        line-height: 1.7;
+    }
+
+    .print-actions {
+        text-align: center;
+        margin: 24px 0;
+    }
+
+    @media print {
+        body.admin-body {
+            background: #fff;
+        }
+
+        .print-page {
+            box-shadow: none;
+            margin: 0;
+            max-width: none;
+            padding: 0;
+        }
+
+        .print-actions,
+        .flash-container {
+            display: none !important;
+        }
+    }
+</style>
+
+<div class="print-page">
+    <div class="print-head">
+        <img src="{{ url_for('public.assets', filename='AMUAA-IPS-LOGO-2026.png') }}" alt="AMUAA logo">
+        <div>
+            <h1>AMUAA Institute of Professional Studies</h1>
+            <p>Riat Market, opposite Kisumu International Airport · 0722 797 244</p>
+        </div>
+    </div>
+
+    <div class="print-title">Registration Fee Slip</div>
+
+    <table class="print-table">
+        <tr>
+            <th>Student name</th>
+            <td>{{ application.full_name }}</td>
+        </tr>
+        <tr>
+            <th>Reference</th>
+            <td>{{ application.id[:8]|upper }}</td>
+        </tr>
+        <tr>
+            <th>Course</th>
+            <td>{{ application.course }}</td>
+        </tr>
+        <tr>
+            <th>Study option</th>
+            <td>{{ application.study_mode }}</td>
+        </tr>
+        <tr>
+            <th>Academic year</th>
+            <td>{{ application.academic_year or '—' }}</td>
+        </tr>
+        <tr>
+            <th>Date</th>
+            <td>{{ application.created_at[:10] }}</td>
+        </tr>
+    </table>
+
+    <div class="amount-box">
+        <span>Amount payable</span>
+        <strong>KES {{ '{:,.0f}'.format(registration_fee) }}</strong>
+    </div>
+
+    <p class="print-note">
+        Please present this slip when paying your registration fee. Once the fee is received, the institute will
+        issue your admission letter and admission number.
+    </p>
+
+    <div class="print-actions">
+        <button class="btn-primary" type="button" onclick="window.print()">🖨 Print slip</button>
+        <a class="btn-secondary" href="{{ url_for('admin.application_detail', application_id=application.id) }}">← Back</a>
+    </div>
+</div>
+{% endblock %}

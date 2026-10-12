@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}Teachers — AMUAA Admin{% endblock %}
+
+{% block content %}
+{% set nav_active = "teachers" %}
+{% set page_title = "Teachers" %}
+{% set page_subtitle = "Trainer records and portal logins" %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+    {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+            <div class="detail-grid">
+                <!-- Add teacher -->
+                <div class="card">
+                    <h2>Add teacher</h2>
+                    <p class="muted" style="margin-bottom:14px">
+                        A username and password are generated automatically and shown after saving.
+                        The teacher must change the password on first login.
+                    </p>
+                    <form method="POST" action="{{ url_for('admin.add_teacher') }}" class="stack-form"
+                        enctype="multipart/form-data">
+                        <div class="form-group">
+                            <label for="t-name">Full name *</label>
+                            <input id="t-name" name="full_name" maxlength="120" required
+                                placeholder="e.g. Jane Wanjiku Kamau">
+                        </div>
+                        <div class="form-group">
+                            <label for="t-email">Email</label>
+                            <input id="t-email" name="email" type="email" maxlength="120"
+                                placeholder="teacher@example.com">
+                        </div>
+                        <div class="form-group">
+                            <label for="t-phone">Phone</label>
+                            <input id="t-phone" name="phone" maxlength="40" placeholder="07xx xxx xxx">
+                        </div>
+                        <div class="form-group">
+                            <label for="t-nid">National ID / Staff no.</label>
+                            <input id="t-nid" name="national_id" maxlength="40">
+                        </div>
+                        <div class="form-group">
+                            <label for="t-qual">Qualification (summary)</label>
+                            <textarea id="t-qual" name="qualification" rows="2" maxlength="400"
+                                placeholder="e.g. B.Ed (Mathematics), 2015"></textarea>
+                        </div>
+                        <div class="form-group">
+                            <label for="t-cat">Document category</label>
+                            <input id="t-cat" name="document_category" maxlength="60"
+                                value="Qualification" placeholder="e.g. Certificate, CV, ID">
+                        </div>
+                        <div class="form-group">
+                            <label for="t-files">Upload qualification document(s)</label>
+                            <input id="t-files" name="qualification_files" type="file" multiple
+                                accept=".pdf,.jpg,.jpeg,.png">
+                            <span class="field-hint">PDF, JPG or PNG · up to 8&nbsp;MB each</span>
+                        </div>
+                        <button class="btn-primary" type="submit">Add teacher</button>
+                    </form>
+                </div>
+
+                <!-- Quick guide -->
+                <div class="card">
+                    <h2>How it works</h2>
+                    <ol class="help-list">
+                        <li>Add the teacher here and upload their qualifications.</li>
+                        <li>Open the teacher to <b>assign classes</b>.</li>
+                        <li>Give the teacher their <b>username &amp; password</b> (also shown on their profile).</li>
+                        <li>The teacher logs in at <code>/teacher/login</code> and sets a new password.</li>
+                        <li>In the portal they can view students, mark the register by <b>QR scan</b>, and
+                            download / upload exam results.</li>
+                    </ol>
+                    <p class="muted" style="margin-top:12px">
+                        Classes are groups of students by <b>course + academic year + study option</b>.
+                        Create them on the <a href="{{ url_for('admin.classes') }}">Classes</a> page.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Teacher list -->
+            <div class="section-gap card full-width">
+                <h2>All teachers</h2>
+                {% if teachers %}
+                <div class="admin-list">
+                    {% for item in teachers %}
+                    {% set t = item.teacher %}
+                    <div class="admin-item">
+                        <div class="admin-item-head">
+                            <div class="admin-item-title">
+                                <strong>{{ t.full_name }}</strong>
+                                <span class="tag tag-code">{{ t.username }}</span>
+                                {% if t.must_change_password and t.initial_password %}
+                                <span class="tag tag-warn">password: {{ t.initial_password }}</span>
+                                {% else %}
+                                <span class="tag tag-ok">password set</span>
+                                {% endif %}
+                            </div>
+                            <div class="row-actions">
+                                <a class="btn-secondary btn-sm"
+                                    href="{{ url_for('admin.teacher_detail', teacher_id=t.id) }}">Manage</a>
+                                <form method="POST"
+                                    action="{{ url_for('admin.reset_teacher_password', teacher_id=t.id) }}"
+                                    onsubmit="return confirm('Reset the password for {{ t.full_name }}?');">
+                                    <button class="btn-secondary btn-sm" type="submit">Reset password</button>
+                                </form>
+                                <form method="POST"
+                                    action="{{ url_for('admin.delete_teacher', teacher_id=t.id) }}"
+                                    onsubmit="return confirm('Remove teacher “{{ t.full_name }}”?');">
+                                    <button class="btn-danger btn-sm" type="submit">Delete</button>
+                                </form>
+                            </div>
+                        </div>
+                        <div class="admin-item-meta">
+                            <span><b>Email:</b> {{ t.email or '—' }}</span>
+                            <span><b>Phone:</b> {{ t.phone or '—' }}</span>
+                            <span><b>Qualification:</b> {{ t.qualification or '—' }}</span>
+                        </div>
+                        <div class="admin-item-meta">
+                            <span><b>Classes:</b>
+                                {% if item.classes %}
+                                {% for c in item.classes %}<span class="tag">{{ c.name }}</span> {% endfor %}
+                                {% else %}<span class="muted">none assigned</span>{% endif %}
+                            </span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="empty-hint">No teachers yet. Add your first teacher above.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

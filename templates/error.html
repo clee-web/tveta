@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}{{ code }} — AMUAA{% endblock %}
+
+{% block content %}
+<main class="error-page" id="main-content" tabindex="-1">
+    <p class="error-code">{{ code }}</p>
+    <h1>{{ heading }}</h1>
+    <p class="muted">{{ message }}</p>
+
+    <div class="row-actions">
+        {% if session.get('admin_logged_in') %}
+        <a class="btn-primary" href="{{ url_for('admin.dashboard') }}">Back to dashboard</a>
+        {% elif session.get('student_id') %}
+        <a class="btn-primary" href="{{ url_for('student.dashboard') }}">Back to my portal</a>
+        {% elif session.get('teacher_id') %}
+        <a class="btn-primary" href="{{ url_for('teacher.dashboard') }}">Back to my classes</a>
+        {% else %}
+        <a class="btn-primary" href="{{ url_for('public.index') }}">Back to the public site</a>
+        {% endif %}
+    </div>
+</main>
+{% endblock %}

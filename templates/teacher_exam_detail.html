@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+{% block title %}{{ exam.title }} — Exam{% endblock %}
+
+{% block content %}
+{% set nav_active = 'exams' %}
+<div class="layout">
+    {% include "_shell/_teacher_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        <header class="topbar">
+            <h1>{{ exam.title }}</h1>
+            <span class="user-badge">👩‍🏫 {{ teacher.full_name }}</span>
+        </header>
+
+        <section class="content">
+            <div class="stat-row">
+                <div class="stat">
+                    <span class="stat-label">Class</span>
+                    <span class="stat-value" style="font-size:15px">{{ cls.name }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Subject</span>
+                    <span class="stat-value" style="font-size:15px">{{ subject.name if subject else '—' }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Max score</span>
+                    <span class="stat-value">{{ '{:,.0f}'.format(exam.max_score) }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Average</span>
+                    <span class="stat-value">{{ average if average is not none else '—' }}</span>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <!-- Download / upload -->
+                <div class="card">
+                    <h2>Bulk import from Excel</h2>
+                    <p class="muted" style="margin-bottom:12px">
+                        Faster than typing when you have the whole class on a spreadsheet.
+                        Grading in the table below works just as well.
+                    </p>
+                    <a class="btn-primary" href="{{ url_for('teacher.exam_template', exam_id=exam.id) }}">
+                        ⬇ Download template
+                    </a>
+
+                    <h2 style="margin-top:24px">Upload the completed file</h2>
+                    <p class="muted" style="margin-bottom:12px">
+                        {{ entered }} of {{ total }} student(s) have results entered.
+                    </p>
+                    <form method="POST" action="{{ url_for('teacher.exam_upload', exam_id=exam.id) }}"
+                        enctype="multipart/form-data" class="stack-form">
+                        <div class="form-group">
+                            <label for="results-file">Completed Excel file</label>
+                            <input id="results-file" name="results_file" type="file" accept=".xlsx" required>
+                            <span class="field-hint">Only the “Score” column is read. Scores are capped at the maximum.</span>
+                        </div>
+                        <button class="btn-primary" type="submit">Upload &amp; update results</button>
+                    </form>
+                </div>
+
+                <!-- Summary -->
+                <div class="card">
+                    <h2>Exam details</h2>
+                    <dl class="detail-list">
+                        <dt>Title</dt>
+                        <dd>{{ exam.title }}</dd>
+                        <dt>Class</dt>
+                        <dd>{{ cls.name }}</dd>
+                        <dt>Subject</dt>
+                        <dd>{{ subject.name if subject else '—' }}</dd>
+                        <dt>Period</dt>
+                        <dd>{{ exam.term or '—' }}</dd>
+                        <dt>Academic year</dt>
+                        <dd>{{ exam.academic_year or '—' }}</dd>
+                        <dt>Max score</dt>
+                        <dd>{{ '{:,.0f}'.format(exam.max_score) }}</dd>
+                        <dt>Created</dt>
+                        <dd class="muted">{{ exam.created_at[:16].replace('T',' ') }}</dd>
+                    </dl>
+                    <p class="muted" style="margin-top:12px">Grades are calculated automatically: A ≥ 80%, B ≥ 70%, C ≥ 60%, D ≥ 50%, E ≥ 40%, otherwise F.</p>
+                </div>
+            </div>
+
+            <!-- Results -->
+            <div class="section-gap card full-width">
+                <h2>Enter scores</h2>
+                {% if students %}
+                <p class="muted" style="margin-bottom:12px">
+                    Type a mark out of {{ '{:,.0f}'.format(exam.max_score) }} for each student and
+                    save. Press Enter to jump to the next row. An empty box keeps the score already
+                    stored, so you can grade a few students at a time.
+                </p>
+                <form method="POST" action="{{ url_for('teacher.save_results', exam_id=exam.id) }}"
+                    id="results-form">
+                    <div class="table-wrap">
+                        <table class="app-table">
+                            <thead>
+                                <tr>
+                                    <th scope="col">#</th>
+                                    <th scope="col">Admission No</th>
+                                    <th scope="col">Name</th>
+                                    <th scope="col">Score</th>
+                                    <th scope="col">Grade</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in students %}
+                                {% set r = results.get(s.id) %}
+                                <tr>
+                                    <td class="muted">{{ loop.index }}</td>
+                                    <td><code>{{ s.admission_number }}</code></td>
+                                    <td>{{ s.full_name }}</td>
+                                    <td>
+                                        <label class="sr-only" for="sc-{{ s.id }}">
+                                            Score for {{ s.full_name }}
+                                        </label>
+                                        <input class="score-input" id="sc-{{ s.id }}"
+                                            name="score-{{ s.id }}" type="number"
+                                            min="0" max="{{ exam.max_score }}" step="0.5"
+                                            inputmode="decimal" autocomplete="off"
+                                            value="{{ r.score if r and r.score is not none else '' }}">
+                                    </td>
+                                    <td>
+                                        {% if r and r.grade %}
+                                        <span class="badge badge-verified">{{ r.grade }}</span>
+                                        {% else %}<span class="muted">—</span>{% endif %}
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="row-actions" style="margin-top:14px">
+                        <button class="btn-primary" type="submit">Save {{ total }} score(s)</button>
+                        <span class="muted">{{ entered }} of {{ total }} entered so far.</span>
+                    </div>
+                </form>
+                <script>
+                    (function () {
+                        var box = document.querySelectorAll('#results-form .score-input');
+                        box.forEach(function (input, i) {
+                            input.addEventListener('keydown', function (e) {
+                                if (e.key !== 'Enter') { return; }
+                                e.preventDefault();
+                                var next = box[i + 1];
+                                if (next) { next.focus(); next.select(); }
+                                else { document.getElementById('results-form').requestSubmit(); }
+                            });
+                        });
+                    })();
+                </script>
+                {% else %}
+                <p class="muted">No admitted students in this class yet.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

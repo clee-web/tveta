@@ -1,0 +1,346 @@
+{% extends "base.html" %}
+{% block title %}Mark Register — {{ cls.name }}{% endblock %}
+
+{% block content %}
+{% set nav_active = 'attendance' %}
+<div class="layout">
+    {% include "_shell/_teacher_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        <header class="topbar">
+            <h1>Mark Register</h1>
+            <span class="user-badge">👩‍🏫 {{ teacher.full_name }}</span>
+        </header>
+
+        <section class="content">
+            <div class="card">
+                <div class="attendance-toolbar">
+                    <div>
+                        <strong>{{ cls.name }}</strong>
+                        <span class="muted">· {{ students | length }} students</span>
+                    </div>
+                    <form method="GET" action="{{ url_for('teacher.attendance', class_id=cls.id) }}"
+                        class="inline-add">
+                        <label for="attend-date" class="muted">Date</label>
+                        <input id="attend-date" type="date" name="date" value="{{ attend_date }}">
+                        <button class="btn-secondary btn-sm" type="submit">Go</button>
+                    </form>
+                </div>
+            </div>
+
+            <div class="section-gap detail-grid">
+                <!-- Scanner -->
+                <div class="card">
+                    <h2>Scan student QR code</h2>
+                    <p class="muted" style="margin-bottom:10px">
+                        Point the camera at a student's QR code. Each scan marks them present.
+                        Students can find their QR code in the student portal.
+                    </p>
+                    <div id="qr-reader" class="qr-reader"></div>
+                    <div class="row-actions" style="margin-top:12px">
+                        <button type="button" class="btn-primary btn-sm" id="start-scan">Start camera</button>
+                        <button type="button" class="btn-secondary btn-sm" id="stop-scan" disabled>Stop</button>
+                    </div>
+                    <p id="scan-status" class="scan-status muted">Camera idle.</p>
+
+                    <h2 class="section-gap">Or enter admission number</h2>
+                    <form id="manual-form" class="inline-add">
+                        <label class="sr-only" for="manual-adm">Admission number</label>
+                        <input id="manual-adm" name="manual-adm" maxlength="40" list="class-adm"
+                            placeholder="Start typing a name or number…" autocomplete="off">
+                        <datalist id="class-adm">
+                            {% for s in students %}
+                            <option value="{{ s.admission_number }}">{{ s.full_name }}</option>
+                            {% endfor %}
+                        </datalist>
+                        <button class="btn-primary btn-sm" type="submit">Mark present</button>
+                    </form>
+                </div>
+
+                <!-- Live status -->
+                <div class="card">
+                    <h2>Today's progress</h2>
+                    <div class="stat-row stat-row-narrow">
+                        <div class="stat">
+                            <span class="stat-label">Present</span>
+                            <span class="stat-value" id="present-count">{{ present_count }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Absent</span>
+                            <span class="stat-value" id="absent-count">{{ absent_count }}</span>
+                        </div>
+                        <div class="stat">
+                            <span class="stat-label">Not marked</span>
+                            <span class="stat-value" id="unmarked-count">{{ students | length - present_count - absent_count }}</span>
+                        </div>
+                    </div>
+                    <p class="muted" style="margin-top:10px">
+                        <span id="marked-tally">{{ present_count + absent_count }}</span>
+                        of {{ students | length }} marked for {{ attend_date }}.
+                    </p>
+
+                    {% if students %}
+                    <h2 class="section-gap">Close out the register</h2>
+                    <p class="muted" style="margin-bottom:10px">
+                        Marks everyone still blank. Anyone you already marked keeps their status.
+                    </p>
+                    <div class="row-actions">
+                        <form method="POST" action="{{ url_for('teacher.attendance_bulk', class_id=cls.id) }}">
+                            <input type="hidden" name="date" value="{{ attend_date }}">
+                            <input type="hidden" name="status" value="present">
+                            <button class="btn-secondary btn-sm" type="submit">
+                                Mark everyone else present
+                            </button>
+                        </form>
+                        <form method="POST" action="{{ url_for('teacher.attendance_bulk', class_id=cls.id) }}">
+                            <input type="hidden" name="date" value="{{ attend_date }}">
+                            <input type="hidden" name="status" value="absent">
+                            <button class="btn-secondary btn-sm" type="submit">
+                                Mark everyone else absent
+                            </button>
+                        </form>
+                    </div>
+                    {% endif %}
+
+                    <h2 class="section-gap">Just scanned</h2>
+                    <ul id="scan-log" class="scan-log">
+                        <li class="muted">No scans yet.</li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Register -->
+            <div class="section-gap card full-width">
+                <h2>Register — {{ attend_date }}</h2>
+                {% if students %}
+                <div class="table-wrap">
+                    <table class="app-table" id="register-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">#</th>
+                                <th scope="col">Admission No</th>
+                                <th scope="col">Name</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Mark</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            {% set st = records.get(s.id) %}
+                            <tr data-student="{{ s.id }}" data-adm="{{ s.admission_number }}">
+                                <td class="muted">{{ loop.index }}</td>
+                                <td><code>{{ s.admission_number }}</code></td>
+                                <td>{{ s.full_name }}</td>
+                                <td>
+                                    <span class="status-pill {% if st == 'present' %}status-present{% elif st == 'absent' %}status-absent{% endif %}">
+                                        {{ st or 'not marked' }}
+                                    </span>
+                                    <span class="row-note" role="status"></span>
+                                </td>
+                                <td class="row-actions">
+                                    <button type="button" class="btn-primary btn-sm" data-mark="present"
+                                        aria-label="Mark {{ s.full_name }} present">Present</button>
+                                    <button type="button" class="btn-secondary btn-sm" data-mark="absent"
+                                        aria-label="Mark {{ s.full_name }} absent">Absent</button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="muted">No admitted students in this class yet.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script>
+    (function () {
+        var MARK_URL = "{{ url_for('teacher.mark_attendance') }}";
+        var CLASS_ID = {{ cls.id }};
+        var ATTEND_DATE = "{{ attend_date }}";
+
+        var scanStatus = document.getElementById('scan-status');
+        var scanLog = document.getElementById('scan-log');
+        var presentCount = document.getElementById('present-count');
+        var absentCount = document.getElementById('absent-count');
+        var unmarkedCount = document.getElementById('unmarked-count');
+        var markedTally = document.getElementById('marked-tally');
+        var manualForm = document.getElementById('manual-form');
+        var manualInput = document.getElementById('manual-adm');
+
+        function rowForAdm(adm) {
+            return document.querySelector('tr[data-adm="' + adm.replace(/"/g, '\\"') + '"]');
+        }
+
+        // The QR carries a JSON payload with student details; extract the admission number.
+        function admFromScan(text) {
+            var t = (text || '').trim();
+            if (t.charAt(0) === '{') {
+                try {
+                    var o = JSON.parse(t);
+                    return (o.admission_number || o.adm || t).trim();
+                } catch (e) { /* fall through to raw text */ }
+            }
+            return t;
+        }
+
+        function refreshCounts() {
+            var rows = document.querySelectorAll('#register-table tbody tr');
+            var present = 0, absent = 0;
+            rows.forEach(function (tr) {
+                var text = (tr.querySelector('.status-pill') || {}).textContent;
+                text = (text || '').trim();
+                if (text === 'present') { present++; }
+                else if (text === 'absent') { absent++; }
+            });
+            presentCount.textContent = present;
+            absentCount.textContent = absent;
+            unmarkedCount.textContent = rows.length - present - absent;
+            markedTally.textContent = present + absent;
+        }
+
+        function logScan(name, adm, ok, note) {
+            var empty = scanLog.querySelector('.muted');
+            if (empty) { scanLog.innerHTML = ''; }
+            var li = document.createElement('li');
+            li.className = ok ? 'scan-ok' : 'scan-fail';
+            li.textContent = (name ? name + ' · ' : '') + adm + (note ? ' — ' + note : '');
+            scanLog.insertBefore(li, scanLog.firstChild);
+        }
+
+        function setRowNote(adm, text, ok) {
+            var tr = rowForAdm(adm);
+            if (!tr) { return; }
+            var note = tr.querySelector('.row-note');
+            if (!note) { return; }
+            note.textContent = text || '';
+            note.className = 'row-note ' + (text ? (ok ? 'note-ok' : 'note-fail') : '');
+        }
+
+        function setRowBusy(adm, busy) {
+            var tr = rowForAdm(adm);
+            if (!tr) { return; }
+            tr.querySelectorAll('[data-mark]').forEach(function (btn) { btn.disabled = busy; });
+            tr.classList.toggle('row-busy', busy);
+        }
+
+        function mark(adm, status, method) {
+            var body = new URLSearchParams();
+            body.append('class_id', CLASS_ID);
+            body.append('admission_number', adm);
+            body.append('date', ATTEND_DATE);
+            body.append('status', status);
+            body.append('method', method);
+
+            setRowBusy(adm, true);
+            setRowNote(adm, '', true);
+
+            return fetch(MARK_URL, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: body.toString()
+            }).then(function (r) { return r.json().then(function (d) { return { ok: r.ok, data: d }; }); })
+              .then(function (res) {
+                  var data = res.data || {};
+                  if (res.ok && data.ok) {
+                      var tr = rowForAdm(adm);
+                      if (tr) {
+                          var pill = tr.querySelector('.status-pill');
+                          pill.textContent = data.student.status;
+                          pill.className = 'status-pill ' + (data.student.status === 'present' ? 'status-present' : 'status-absent');
+                          tr.classList.add('row-highlight');
+                          setTimeout(function () { tr.classList.remove('row-highlight'); }, 1600);
+                      }
+                      logScan(data.student.full_name, adm, true, null);
+                      refreshCounts();
+                  } else {
+                      // The scan log is in another card; on a long register a failed
+                      // row-click must show its reason where the click happened.
+                      var why = data.error || 'Could not mark this student.';
+                      logScan(null, adm, false, why);
+                      setRowNote(adm, why, false);
+                  }
+                  return data;
+              })
+              .catch(function () {
+                  logScan(null, adm, false, 'Network error.');
+                  setRowNote(adm, 'Network error — nothing was saved.', false);
+              })
+              .finally(function () {
+                  setRowBusy(adm, false);
+              });
+        }
+
+        // Manual form
+        manualForm.addEventListener('submit', function (e) {
+            e.preventDefault();
+            var adm = manualInput.value.trim();
+            if (!adm) { return; }
+            mark(adm, 'present', 'manual').then(function () { manualInput.value = ''; manualInput.focus(); });
+        });
+
+        // Per-row buttons
+        document.querySelectorAll('#register-table [data-mark]').forEach(function (btn) {
+            btn.addEventListener('click', function () {
+                var tr = btn.closest('tr');
+                mark(tr.getAttribute('data-adm'), btn.getAttribute('data-mark'), 'manual');
+            });
+        });
+
+        // Camera scanner
+        var scanner = null;
+        var startBtn = document.getElementById('start-scan');
+        var stopBtn = document.getElementById('stop-scan');
+
+        function startScanner() {
+            if (typeof Html5Qrcode === 'undefined') {
+                scanStatus.textContent = 'Scanner library could not load (no internet). Use manual entry below.';
+                return;
+            }
+            if (scanner) { return; }
+            scanner = new Html5Qrcode('qr-reader');
+            scanStatus.textContent = 'Starting camera…';
+            scanner.start(
+                { facingMode: 'environment' },
+                { fps: 10, qrbox: 230 },
+                function (decodedText) {
+                    var adm = admFromScan(decodedText);
+                    if (adm) { mark(adm, 'present', 'qr'); }
+                },
+                function () { /* per-frame decode errors are ignored */ }
+            ).then(function () {
+                scanStatus.textContent = 'Scanning… point the camera at a QR code.';
+                startBtn.disabled = true;
+                stopBtn.disabled = false;
+            }).catch(function (err) {
+                scanStatus.textContent = 'Could not start the camera: ' + err;
+                scanner = null;
+            });
+        }
+
+        function stopScanner() {
+            if (!scanner) { return; }
+            scanner.stop().then(function () {
+                scanner.clear();
+                scanner = null;
+                scanStatus.textContent = 'Camera stopped.';
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            }).catch(function () {
+                scanner = null;
+                startBtn.disabled = false;
+                stopBtn.disabled = true;
+            });
+        }
+
+        startBtn.addEventListener('click', startScanner);
+        stopBtn.addEventListener('click', stopScanner);
+
+        refreshCounts();
+    })();
+</script>
+{% endblock %}

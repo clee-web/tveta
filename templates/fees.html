@@ -1,0 +1,323 @@
+{% extends "base.html" %}
+{% block title %}Fees — AMUAA Admin{% endblock %}
+
+{% block content %}
+{% set nav_active = "fees" %}
+{% set page_title = "Fees & Payments" %}
+{% set page_subtitle = "Fee structures, payments and student balances" %}
+{% macro other_items_repeater(items) %}
+<div class="other-items" data-repeater>
+    {% if items %}
+    {% for it in items %}
+    <div class="other-item-row">
+        <input name="other_item_name" maxlength="80" placeholder="Item name e.g. Library fee" value="{{ it.name }}">
+        <input name="other_item_amount" type="number" min="0" step="0.01" placeholder="0" class="other-amount"
+            value="{{ it.amount }}">
+        <button type="button" class="btn-danger btn-sm" data-remove-item aria-label="Remove item">✕</button>
+    </div>
+    {% endfor %}
+    {% else %}
+    <div class="other-item-row">
+        <input name="other_item_name" maxlength="80" placeholder="Item name e.g. Library fee">
+        <input name="other_item_amount" type="number" min="0" step="0.01" placeholder="0" class="other-amount">
+        <button type="button" class="btn-danger btn-sm" data-remove-item aria-label="Remove item">✕</button>
+    </div>
+    {% endif %}
+</div>
+<button type="button" class="btn-secondary btn-sm" data-add-item>+ Add another other fee</button>
+{% endmacro %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+    {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+            <div class="detail-grid">
+                <!-- Add fee structure -->
+                <div class="card">
+                    <h2>Add fee structure</h2>
+                    <p class="muted" style="margin-bottom:14px">
+                        Choose a course, academic year and period, then set the fees for that period.
+                        A certificate course runs terms, a diploma runs semesters and a short course
+                        runs its stages. These fees apply automatically to every student in that
+                        course and year.
+                    </p>
+                    <form method="POST" action="{{ url_for('admin.add_fee') }}" class="stack-form">
+                        <div class="form-group">
+                            <label for="fee-course">Course *</label>
+                            <select id="fee-course" name="course_name" required>
+                                <option value="">Choose a course</option>
+                                {% for c in courses %}
+                                <option value="{{ c.name }}">{{ c.name }}{% if c.code %} ({{ c.code }}){% endif %}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="fee-year">Academic year *</label>
+                            <input id="fee-year" name="academic_year" type="number" min="2000" max="2100"
+                                value="{{ current_year }}" required>
+                        </div>
+                        <div class="form-group">
+                            <label for="fee-term" id="fee-term-label">Term *</label>
+                            <select id="fee-term" name="term" required>
+                                {% for t in terms %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                            </select>
+                            <p class="field-hint" id="fee-term-hint">
+                                Pick a course first — the list shows only the periods that course runs.
+                            </p>
+                        </div>
+                        <div class="form-group">
+                            <label for="fee-tuition">Tuition fee (KES)</label>
+                            <input id="fee-tuition" name="tuition_fee" type="number" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label for="fee-exam">Exam fee (KES)</label>
+                            <input id="fee-exam" name="exam_fee" type="number" min="0" step="0.01" value="0">
+                        </div>
+                        <div class="form-group">
+                            <label>Other fees — item name &amp; amount</label>
+                            {{ other_items_repeater([]) }}
+                            <p class="muted" style="margin-top:8px">
+                                Add as many items as you need (e.g. Library fee, ID card, Attachment fee). The
+                                period total is calculated automatically.
+                            </p>
+                        </div>
+                        <button class="btn-primary" type="submit">Save fee structure</button>
+                    </form>
+                </div>
+
+                <!-- Summary -->
+                <div class="card">
+                    <h2>At a glance</h2>
+                    <dl class="detail-list">
+                        <dt>Fee structures</dt>
+                        <dd>{{ structures|length }}</dd>
+                        <dt>Admitted students</dt>
+                        <dd>{{ students|length }}</dd>
+                        <dt>Registration fee</dt>
+                        <dd id="reg-fee-glance">Varies by course</dd>
+                    </dl>
+                    <p class="muted" style="margin-top:14px">
+                        Each course sets its own registration fee, so editing it on the Academics
+                        page changes what that course's students are billed. A student's bill is
+                        the registration fee plus the sum of every fee structure for their
+                        course and academic year. Balances update automatically whenever a fee is
+                        saved or a payment is recorded.
+                    </p>
+                </div>
+            </div>
+
+            <!-- Fee structures -->
+            <div class="section-gap card full-width">
+                <h2>Fee structures</h2>
+                {% if structures %}
+                <div class="admin-list">
+                    {% for s in structures %}
+                    <div class="admin-item">
+                        <div class="admin-item-head">
+                            <div class="admin-item-title">
+                                <strong>{{ s.course_name }}</strong>
+                                <span class="tag">{{ s.academic_year }}</span>
+                                <span class="tag">{{ s.term }}</span>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.delete_fee', fee_id=s.id) }}"
+                                onsubmit="return confirm('Delete this fee structure?');">
+                                <button class="btn-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        </div>
+                        <div class="admin-item-meta">
+                            <span><b>Tuition:</b> KES {{ '{:,.0f}'.format(s.tuition_fee or 0) }}</span>
+                            <span><b>Exam:</b> KES {{ '{:,.0f}'.format(s.exam_fee or 0) }}</span>
+                            <span><b>Other:</b> KES {{ '{:,.0f}'.format(s.other_fee or 0) }}</span>
+                            <span><b>Period total:</b> KES {{ '{:,.0f}'.format((s.tuition_fee or 0) + (s.exam_fee or 0) + (s.other_fee or 0)) }}</span>
+                        </div>
+                        {% if s.other_items %}
+                        <div class="other-items-view">
+                            {% for it in s.other_items %}
+                            <span class="other-chip">{{ it.name }} · KES {{ '{:,.0f}'.format(it.amount) }}</span>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+                        <details class="admin-edit">
+                            <summary>Edit fees</summary>
+                            <form method="POST" action="{{ url_for('admin.edit_fee', fee_id=s.id) }}"
+                                class="stack-form">
+                                <div class="form-group">
+                                    <label>Tuition fee (KES)</label>
+                                    <input name="tuition_fee" type="number" min="0" step="0.01"
+                                        value="{{ s.tuition_fee or 0 }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Exam fee (KES)</label>
+                                    <input name="exam_fee" type="number" min="0" step="0.01"
+                                        value="{{ s.exam_fee or 0 }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Other fees — item name &amp; amount</label>
+                                    {{ other_items_repeater(s.other_items) }}
+                                </div>
+                                <button class="btn-primary btn-sm" type="submit">Save changes</button>
+                            </form>
+                        </details>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="empty-hint">No fee structures yet. Add one using the form above.</p>
+                {% endif %}
+            </div>
+
+            <!-- Students & balances -->
+            <div class="section-gap card full-width">
+                <h2>Students &amp; balances</h2>
+                {% if students %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>Admission No</th>
+                                <th>Student</th>
+                                <th>Course</th>
+                                <th>Year</th>
+                                <th scope="col">Total due</th>
+                                <th scope="col">Paid</th>
+                                <th scope="col">Pending</th>
+                                <th scope="col">Balance</th>
+                                <th scope="col"><span class="sr-only">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for row in students %}
+                            {% set s = row.student %}
+                            {% set info = row.info %}
+                            <tr>
+                                <td><code>{{ s.admission_number }}</code></td>
+                                <td><strong>{{ s.full_name }}</strong></td>
+                                <td>{{ s.course }}</td>
+                                <td>{{ s.academic_year or '—' }}</td>
+                                <td>KES {{ '{:,.0f}'.format(info.total_due) }}</td>
+                                <td>KES {{ '{:,.0f}'.format(info.paid) }}</td>
+                                <td>
+                                    {% if info.pending %}
+                                    <a class="badge badge-pending"
+                                        href="{{ url_for('admin.application_detail', application_id=s.id) }}"
+                                        title="Not counted in the balance until confirmed">
+                                        KES {{ '{:,.0f}'.format(info.pending) }} to check</a>
+                                    {% else %}
+                                    <span class="muted">—</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    {% if info.balance > 0 %}
+                                    <span class="badge badge-rejected">KES {{ '{:,.0f}'.format(info.balance) }}</span>
+                                    {% else %}
+                                    <span class="badge badge-verified">Paid</span>
+                                    {% endif %}
+                                </td>
+                                <td>
+                                    <a class="btn-view"
+                                        href="{{ url_for('admin.application_detail', application_id=s.id) }}">Open</a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="empty-hint">No admitted students yet. Issue an admission letter from an application to see
+                    balances here.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    (function () {
+        function makeRow() {
+            var row = document.createElement('div');
+            row.className = 'other-item-row';
+            row.innerHTML =
+                '<input name="other_item_name" maxlength="80" placeholder="Item name e.g. Library fee">' +
+                '<input name="other_item_amount" type="number" min="0" step="0.01" placeholder="0" class="other-amount">' +
+                '<button type="button" class="btn-danger btn-sm" data-remove-item aria-label="Remove item">✕</button>';
+            return row;
+        }
+
+        document.addEventListener('click', function (event) {
+            var addBtn = event.target.closest('[data-add-item]');
+            if (addBtn) {
+                var container = addBtn.closest('form').querySelector('[data-repeater]');
+                container.appendChild(makeRow());
+                return;
+            }
+
+            var removeBtn = event.target.closest('[data-remove-item]');
+            if (removeBtn) {
+                var row = removeBtn.closest('.other-item-row');
+                var parent = row.parentElement;
+                row.remove();
+                if (!parent.querySelector('.other-item-row')) {
+                    parent.appendChild(makeRow());
+                }
+            }
+        });
+    })();
+</script>
+
+<script>
+    var PERIODS = {{ periods_by_course | tojson }};
+    var REG_FEES = {{ registration_by_course | tojson }};
+    var DEFAULT_PERIODS = {{ terms | tojson }};
+
+    // Courses are priced differently: a certificate has terms, a diploma
+    // semesters and a short course its two stages. The period list and the
+    // registration figure follow whichever course is picked.
+    (function () {
+        var course = document.getElementById('fee-course');
+        var term = document.getElementById('fee-term');
+        var label = document.getElementById('fee-term-label');
+        var hint = document.getElementById('fee-term-hint');
+        var glance = document.getElementById('reg-fee-glance');
+        if (!course || !term) { return; }
+
+        function money(value) {
+            return 'KES ' + Number(value).toLocaleString('en-KE', { maximumFractionDigits: 0 });
+        }
+
+        function sync() {
+            var name = course.value;
+            var periods = PERIODS[name] || DEFAULT_PERIODS;
+            var previous = term.value;
+
+            term.innerHTML = '';
+            periods.forEach(function (p) {
+                var opt = document.createElement('option');
+                opt.value = p;
+                opt.textContent = p;
+                term.appendChild(opt);
+            });
+            if (periods.indexOf(previous) !== -1) { term.value = previous; }
+
+            var first = periods[0] || '';
+            var word = first.indexOf('Semester') === 0 ? 'Semester'
+                   : first.indexOf('Term') === 0 ? 'Term' : 'Stage';
+            if (label) { label.textContent = name ? word + ' *' : 'Term *'; }
+            if (hint) {
+                hint.textContent = name
+                    ? word + 's for this course: ' + periods.join(', ') + '.'
+                    : 'Pick a course first — the list shows only the periods that course runs.';
+            }
+            if (glance) {
+                glance.textContent = (name && REG_FEES[name] !== undefined)
+                    ? money(REG_FEES[name]) + ' for ' + name
+                    : 'Varies by course — set on the Academics page';
+            }
+        }
+
+        course.addEventListener('change', sync);
+        sync();
+    })();
+</script>
+{% endblock %}

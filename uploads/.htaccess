@@ -1,0 +1,11 @@
+# Uploaded admission documents are data, never code. If this folder is ever
+# reachable over HTTP, nothing in it may be listed or executed, and an uploaded
+# page must not be able to run in the site's own origin.
+Options -Indexes
+RemoveHandler .py .php .phtml .phar .cgi .pl .jsp .asp .aspx .shtml
+RemoveType .py .php .phtml .phar .cgi .pl .jsp .asp .aspx .shtml
+AddType text/plain .py .php .phtml .phar .cgi .pl .jsp .asp .aspx .shtml .html .htm .js
+
+<FilesMatch "\.(py|php|phtml|phar|cgi|pl|jsp|asp|aspx|sh|htaccess|db|log)$">
+    Require all denied
+</FilesMatch>

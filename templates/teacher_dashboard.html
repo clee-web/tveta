@@ -1,0 +1,51 @@
+{% extends "base.html" %}
+{% block title %}My Classes — AMUAA Teacher Portal{% endblock %}
+
+{% block content %}
+{% set nav_active = 'dashboard' %}
+<div class="layout">
+    {% include "_shell/_teacher_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        <header class="topbar">
+            <h1>My Classes</h1>
+            <span class="user-badge">👩‍🏫 {{ teacher.full_name }}</span>
+        </header>
+
+        <section class="content">
+            {% if summary %}
+            <div class="admin-list">
+                {% for item in summary %}
+                {% set c = item.cls %}
+                <div class="admin-item">
+                    <div class="admin-item-head">
+                        <div class="admin-item-title">
+                            <strong>{{ c.name }}</strong>
+                            <span class="tag">{{ item.students }} student{{ '' if item.students == 1 else 's' }}</span>
+                            <span class="tag">{{ item.subjects }} subject{{ '' if item.subjects == 1 else 's' }}</span>
+                            <span class="tag">{{ item.exams }} exam{{ '' if item.exams == 1 else 's' }}</span>
+                        </div>
+                        <div class="row-actions">
+                            <a class="btn-secondary btn-sm"
+                                href="{{ url_for('teacher.class_detail', class_id=c.id) }}">Open class</a>
+                            <a class="btn-primary btn-sm"
+                                href="{{ url_for('teacher.attendance', class_id=c.id) }}">Mark register</a>
+                        </div>
+                    </div>
+                    <div class="admin-item-meta">
+                        <span><b>Course:</b> {{ c.course }}</span>
+                        <span><b>Year:</b> {{ c.academic_year }}</span>
+                        <span><b>Study option:</b> {{ c.study_mode }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+            {% else %}
+            <div class="card">
+                <p class="empty-hint">You have not been assigned any classes yet. Please contact the administrator.</p>
+            </div>
+            {% endif %}
+        </section>
+    </main>
+</div>
+{% endblock %}

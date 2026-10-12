@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+{% from "_shell/_icons.html" import svg %}
+{% block title %}Dashboard — AMUAA Admin{% endblock %}
+
+{% macro kpi(label, value, hint='', icon='inbox', href='', tone='neutral') %}
+<a class="kpi kpi-{{ tone }} {% if not href %}kpi-static{% endif %}" {% if href %}href="{{ href }}"{% endif %}>
+    <span class="kpi-head">
+        <span class="kpi-ic">{{ svg(icon) }}</span>
+    </span>
+    <span class="kpi-value" {% if value is number %}data-count="{{ value }}"{% endif %}>{{ value }}</span>
+    <span class="kpi-label">{{ label }}</span>
+    {% if hint %}<span class="kpi-hint">{{ hint }}</span>{% endif %}
+</a>
+{% endmacro %}
+
+{% block content %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+
+            {% if stats.pending %}
+            <div class="callout callout-warn">
+                {{ svg('clock') }}
+                <div class="callout-text">
+                    <strong>{{ stats.pending }} application{{ '' if stats.pending == 1 else 's' }} waiting to be
+                        reviewed.</strong>
+                    <span>Reviewing an applicant lets you verify, reject or admit them to a class.</span>
+                </div>
+                <a class="btn-primary btn-sm" href="{{ url_for('admin.applications', status='pending') }}">
+                    Review now {{ svg('arrow-right', 'ic-xs') }}
+                </a>
+            </div>
+            {% endif %}
+
+            {% if stats.pending_payment_count %}
+            <div class="callout callout-info">
+                {{ svg('wallet') }}
+                <div class="callout-text">
+                    <strong>{{ stats.pending_payment_count }} payment{{ '' if stats.pending_payment_count == 1 else
+                        's' }} awaiting confirmation
+                        (KES {{ '{:,.0f}'.format(stats.awaiting) }}).</strong>
+                    <span>Student balances stay stale until these are confirmed.</span>
+                </div>
+                <a class="btn-primary btn-sm" href="{{ url_for('admin.fees') }}">Open fees</a>
+            </div>
+            {% endif %}
+
+            {% if stats.continuations %}
+            <div class="callout">
+                {{ svg('trend') }}
+                <div class="callout-text">
+                    <strong>{{ stats.continuations }} student{{ '' if stats.continuations == 1 else 's' }} asked to
+                        continue to the next term or semester.</strong>
+                    <span>Approve, send back to repeat, transfer, defer or mark complete —
+                        {{ stats.deferred }} deferred and {{ stats.repeating }} repeating today.</span>
+                </div>
+                <a class="btn-primary btn-sm" href="{{ url_for('admin.progression') }}">
+                    Review requests {{ svg('arrow-right', 'ic-xs') }}
+                </a>
+            </div>
+            {% endif %}
+
+            <!-- ---------------- Headline numbers ---------------- -->
+            <div class="kpi-grid">
+                {{ kpi('Total applications', stats.total, icon='inbox', tone='brand',
+                       href=url_for('admin.applications'),
+                       hint='{} added this month'.format(stats.new_this_month)) }}
+                {{ kpi('Awaiting review', stats.pending, icon='clock', tone='warn',
+                       href=url_for('admin.applications', status='pending'),
+                       hint='{} in the last 30 days'.format(stats.last_30)) }}
+                {{ kpi('Admitted students', stats.admitted, icon='cap', tone='ok',
+                       href=url_for('admin.students_list'),
+                       hint='{} active now'.format(stats.active_students)) }}
+                {{ kpi('Fees collected', stats.collected, icon='wallet', tone='ok',
+                       href=url_for('admin.fees'),
+                       hint='Confirmed payments to date') }}
+                {{ kpi('Outstanding balance', stats.outstanding, icon='alert', tone='danger',
+                       href=url_for('admin.fees'),
+                       hint='Across {} admitted students'.format(stats.admitted)) }}
+            </div>
+
+            <!-- ---------------- Charts ---------------- -->
+            <div class="panel-grid">
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2>Applications received</h2>
+                        <span class="panel-meta">last 6 months</span>
+                    </div>
+                    {% set peak = stats.trend | map(attribute='count') | max if stats.trend else 0 %}
+                    {% if peak %}
+                    <ul class="bars">
+                        {% for point in stats.trend %}
+                        <li class="bar-row">
+                            <span class="bar-name">{{ point.label }}</span>
+                            <span class="bar-track">
+                                <span class="bar-fill" style="--w: {{ (point.count / peak * 100) | round(1) }}%"
+                                    title="{{ point.count }} application(s)"></span>
+                            </span>
+                            <span class="bar-num">{{ point.count }}</span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="panel-empty">No applications in the last six months yet.</p>
+                    {% endif %}
+                </section>
+
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2>Admissions pipeline</h2>
+                        <span class="panel-meta">all time</span>
+                    </div>
+                    {% set total = stats.total or 1 %}
+                    <ul class="stack-list">
+                        <li>
+                            <div class="stack-top">
+                                <span class="dot dot-warn"></span><strong>Pending review</strong>
+                                <span class="stack-num">{{ stats.pending }}</span>
+                            </div>
+                            <span class="meter"><span class="fill fill-warn"
+                                    style="--w: {{ (stats.pending / total * 100) | round(1) }}%"></span></span>
+                        </li>
+                        <li>
+                            <div class="stack-top">
+                                <span class="dot dot-ok"></span><strong>Verified</strong>
+                                <span class="stack-num">{{ stats.verified }}</span>
+                            </div>
+                            <span class="meter"><span class="fill fill-ok"
+                                    style="--w: {{ (stats.verified / total * 100) | round(1) }}%"></span></span>
+                        </li>
+                        <li>
+                            <div class="stack-top">
+                                <span class="dot dot-danger"></span><strong>Rejected</strong>
+                                <span class="stack-num">{{ stats.rejected }}</span>
+                            </div>
+                            <span class="meter"><span class="fill fill-danger"
+                                    style="--w: {{ (stats.rejected / total * 100) | round(1) }}%"></span></span>
+                        </li>
+                    </ul>
+                    <div class="panel-foot-grid">
+                        <div><span class="mini-label">Courses offered</span><strong>{{ stats.courses }}</strong></div>
+                        <div><span class="mini-label">Classes running</span><strong>{{ stats.classes }}</strong></div>
+                        <div><span class="mini-label">Teachers</span><strong>{{ stats.teachers }}</strong></div>
+                    </div>
+                </section>
+            </div>
+
+            <!-- ---------------- Lists ---------------- -->
+            <div class="panel-grid">
+                <section class="panel">
+                    <div class="panel-head">
+                        <h2>Latest applications</h2>
+                        <a class="link-arrow" href="{{ url_for('admin.applications') }}">
+                            View all {{ svg('arrow-right', 'ic-xs') }}
+                        </a>
+                    </div>
+                    {% if recent %}
+                    <ul class="feed">
+                        {% for a in recent %}
+                        <li>
+                            <a class="feed-item" href="{{ url_for('admin.application_detail', application_id=a.id) }}">
+                                <span class="avatar avatar-sm">{{ a.full_name[:1]|upper }}</span>
+                                <span class="feed-main">
+                                    <strong>{{ a.full_name }}</strong>
+                                    <small>{{ a.course }} · {{ a.study_mode }}</small>
+                                </span>
+                                <span class="feed-side">
+                                    <span class="badge badge-{{ a.status }}">{{ a.status }}</span>
+                                    <small>{{ a.created_at[:10] }}</small>
+                                </span>
+                            </a>
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <div class="panel-empty">
+                        <p>No applications yet.</p>
+                        <a class="btn-secondary btn-sm" href="{{ url_for('public.index') }}" target="_blank"
+                            rel="noopener">Open the public application form</a>
+                    </div>
+                    {% endif %}
+                </section>
+
+                <div class="panel-col">
+                    <section class="panel">
+                        <div class="panel-head"><h2>Most applied courses</h2></div>
+                        {% if stats.top_courses %}
+                        {% set top_peak = stats.top_courses | map(attribute='count') | max %}
+                        <ul class="bars bars-compact">
+                            {% for c in stats.top_courses %}
+                            <li class="bar-row">
+                                <span class="bar-name">{{ c.name }}</span>
+                                <span class="bar-track">
+                                    <span class="bar-fill bar-fill-alt"
+                                        style="--w: {{ (c.count / top_peak * 100) | round(1) }}%"></span>
+                                </span>
+                                <span class="bar-num">{{ c.count }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="panel-empty">Nothing to rank yet.</p>
+                        {% endif %}
+                    </section>
+
+                    <section class="panel">
+                        <div class="panel-head"><h2>Study mode preference</h2></div>
+                        {% if stats.mode_split %}
+                        <ul class="chip-list">
+                            {% for m in stats.mode_split %}
+                            <li>
+                                <span>{{ m.name }}</span>
+                                <span class="chip">{{ m.count }}</span>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                        {% else %}
+                        <p class="panel-empty">No submissions yet.</p>
+                        {% endif %}
+                    </section>
+                </div>
+            </div>
+
+            <!-- ---------------- Quick actions ---------------- -->
+            <section class="panel">
+                <div class="panel-head"><h2>Quick actions</h2></div>
+                <div class="action-grid">
+                    <a class="action-tile" href="{{ url_for('admin.applications') }}">
+                        {{ svg('inbox') }}<span>All applications</span><small>Search, filter and export</small>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('admin.students_list') }}">
+                        {{ svg('users') }}<span>Students</span><small>{{ stats.admitted }} admitted</small>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('admin.progression') }}">
+                        {{ svg('trend') }}<span>Continuations</span>
+                        <small>{{ stats.continuations }} waiting</small>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('admin.fees') }}">
+                        {{ svg('wallet') }}<span>Record a payment</span><small>Fees and balances</small>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('admin.teachers') }}">
+                        {{ svg('teacher') }}<span>Add a teacher</span><small>Portal login included</small>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('admin.classes') }}">
+                        {{ svg('building') }}<span>Create a class</span><small>{{ stats.classes }} so far</small>
+                    </a>
+                    <a class="action-tile" href="{{ url_for('admin.academics') }}">
+                        {{ svg('book') }}<span>Courses</span><small>{{ stats.courses }} programmes</small>
+                    </a>
+                </div>
+            </section>
+
+        </section>
+    </main>
+</div>
+{% endblock %}

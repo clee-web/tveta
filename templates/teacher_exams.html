@@ -1,0 +1,182 @@
+{% extends "base.html" %}
+{% block title %}Exams — AMUAA Teacher Portal{% endblock %}
+
+{% block content %}
+{% set nav_active = 'exams' %}
+<div class="layout">
+    {% include "_shell/_teacher_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        <header class="topbar">
+            <h1>Exams &amp; Results</h1>
+            <span class="user-badge">👩‍🏫 {{ teacher.full_name }}</span>
+        </header>
+
+        <section class="content">
+            {% if classes %}
+            <div class="card">
+                <h2>Create an exam</h2>
+                <p class="muted" style="margin-bottom:14px">
+                    Pick a class and subject, give the exam a title (e.g. “Midterm Term 1”), then
+                    download the Excel template, enter marks and upload it back.
+                </p>
+                <form method="POST" action="{{ url_for('teacher.create_exam') }}" class="stack-form">
+                    {% set p = prefill or {} %}
+                    <div class="form-group">
+                        <label for="x-class">Class *</label>
+                        <select id="x-class" name="class_id" required>
+                            <option value="">Choose a class</option>
+                            {% for c in classes %}
+                            <option value="{{ c.id }}" {% if p.get('class_id') == c.id %}selected{% endif %}>{{ c.name }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="x-subject">Subject / module</label>
+                        <select id="x-subject" name="subject_id">
+                            <option value="">— none —</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="x-title">Exam title *</label>
+                        <input id="x-title" name="title" maxlength="120" required
+                            placeholder="e.g. Midterm Term 1" value="{{ p.get('title', '') }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="x-term" id="x-term-label">Term</label>
+                        <select id="x-term" name="term">
+                            <option value="">—</option>
+                            {% for t in terms %}
+                            <option value="{{ t }}" {% if p.get('term') == t %}selected{% endif %}>{{ t }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="x-year">Academic year</label>
+                        <input id="x-year" name="academic_year" maxlength="9"
+                            value="{{ p.get('academic_year') or current_year }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="x-max">Maximum score</label>
+                        <input id="x-max" name="max_score" type="number" min="1" step="1"
+                            value="{{ p.get('max_score') or 100 }}">
+                    </div>
+                    <button class="btn-primary" type="submit">Create exam</button>
+                </form>
+            </div>
+            {% else %}
+            <div class="card">
+                <p class="empty-hint">You have no classes assigned, so you cannot create exams yet.</p>
+            </div>
+            {% endif %}
+
+            <div class="section-gap card full-width">
+                <h2>My exams</h2>
+                {% if exams %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>Exam</th>
+                                <th>Class</th>
+                                <th>Subject</th>
+                                <th>Period</th>
+                                <th>Max</th>
+                                <th>Results</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in exams %}
+                            <tr>
+                                <td>{{ e.title }}</td>
+                                <td>{{ e.class_name }}</td>
+                                <td>{{ e.subject_name or '—' }}</td>
+                                <td>{{ e.term or '—' }}</td>
+                                <td>{{ '{:,.0f}'.format(e.max_score) }}</td>
+                                <td>{{ e.result_count }}</td>
+                                <td class="row-actions">
+                                    <a class="btn-secondary btn-sm"
+                                        href="{{ url_for('teacher.exam_detail', exam_id=e.id) }}">Open</a>
+                                    <form method="POST"
+                                        action="{{ url_for('teacher.delete_exam', exam_id=e.id) }}"
+                                        onsubmit="return confirm('Delete exam “{{ e.title }}” and its results?');">
+                                        <button class="btn-danger btn-sm" type="submit">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="muted">No exams yet. Create one above.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+
+<script>
+    var SUBJECTS = {
+        {% for cid, subs in subjects_by_class.items() %}
+        "{{ cid }}": [{% for s in subs %}{ "id": {{ s.id }}, "name": {{ s.name | tojson }} }{% if not loop.last %},{% endif %}{% endfor %}]{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    var PERIODS = {
+        {% for cid, periods in terms_by_class.items() %}
+        "{{ cid }}": {{ periods | tojson }}{% if not loop.last %},{% endif %}
+        {% endfor %}
+    };
+
+    (function () {
+        var classSelect = document.getElementById('x-class');
+        var subjectSelect = document.getElementById('x-subject');
+        var termSelect = document.getElementById('x-term');
+        if (!classSelect || !subjectSelect) { return; }
+
+        function options(select, values, blankLabel) {
+            select.innerHTML = '';
+            var blank = document.createElement('option');
+            blank.value = '';
+            blank.textContent = blankLabel;
+            select.appendChild(blank);
+            values.forEach(function (item) {
+                var opt = document.createElement('option');
+                opt.value = item.value;
+                opt.textContent = item.name;
+                select.appendChild(opt);
+            });
+        }
+
+        function rebuild() {
+            var cid = classSelect.value;
+            options(subjectSelect, SUBJECTS[cid] || [], '— none —');
+
+            // A short-course class has stages, a diploma class semesters, so the
+            // period list follows the course this class runs.
+            if (termSelect) {
+                var periods = PERIODS[cid] || {{ terms | tojson }};
+                options(termSelect, periods.map(function (p) { return { value: p, name: p }; }), '—');
+                var word = document.getElementById('x-term-label');
+                if (word) {
+                    var first = periods[0] || '';
+                    word.textContent = first.indexOf('Semester') === 0 ? 'Semester'
+                                     : first.indexOf('Term') === 0 ? 'Term' : 'Stage';
+                }
+            }
+        }
+
+        classSelect.addEventListener('change', rebuild);
+        rebuild();
+
+        // The lists are built by JS, so a re-rendered form has to put the
+        // teacher's earlier choices back by hand.
+        var keepSubject = {{ (prefill.subject_id if prefill else '') | tojson }};
+        if (keepSubject) { subjectSelect.value = String(keepSubject); }
+        var keepTerm = {{ (prefill.term if prefill else '') | tojson }};
+        if (keepTerm && termSelect) { termSelect.value = keepTerm; }
+    })();
+</script>
+{% endblock %}

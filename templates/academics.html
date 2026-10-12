@@ -1,0 +1,264 @@
+{% extends "base.html" %}
+{% block title %}Departments & Courses — AMUAA Admin{% endblock %}
+
+{% block content %}
+{% set nav_active = "academics" %}
+{% set page_title = "Departments & Courses" %}
+{% set page_subtitle = "Courses are grouped under a department" %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+    {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+            <div class="detail-grid">
+                <!-- ---------------- Departments ---------------- -->
+                <div class="card">
+                    <h2>Departments</h2>
+                    <form method="POST" action="{{ url_for('admin.add_department') }}" class="stack-form">
+                        <div class="form-group">
+                            <label for="dept-name">Department name *</label>
+                            <input id="dept-name" name="name" maxlength="120" required
+                                placeholder="e.g. ICT &amp; Digital Studies">
+                        </div>
+                        <div class="form-group">
+                            <label for="dept-desc">Description (optional)</label>
+                            <input id="dept-desc" name="description" maxlength="240"
+                                placeholder="Short note about this department">
+                        </div>
+                        <button class="btn-primary" type="submit">Add department</button>
+                    </form>
+
+                    {% if departments %}
+                    <div class="admin-list">
+                        {% for d in departments %}
+                        <div class="admin-item">
+                            <div class="admin-item-head">
+                                <div class="admin-item-title">
+                                    <strong>{{ d.name }}</strong>
+                                    <span class="tag">{{ d.course_count }} course{{ '' if d.course_count == 1 else 's' }}</span>
+                                </div>
+                                <form method="POST"
+                                    action="{{ url_for('admin.delete_department', department_id=d.id) }}"
+                                    onsubmit="return confirm('Delete the department “{{ d.name }}”?');">
+                                    <button class="btn-danger btn-sm" type="submit">Delete</button>
+                                </form>
+                            </div>
+                            {% if d.description %}
+                            <p class="admin-item-note">{{ d.description }}</p>
+                            {% endif %}
+                            <details class="admin-edit">
+                                <summary>Edit department</summary>
+                                <form method="POST"
+                                    action="{{ url_for('admin.edit_department', department_id=d.id) }}"
+                                    class="stack-form">
+                                    <div class="form-group">
+                                        <label>Department name *</label>
+                                        <input name="name" maxlength="120" value="{{ d.name }}" required>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Description</label>
+                                        <input name="description" maxlength="240"
+                                            value="{{ d.description or '' }}">
+                                    </div>
+                                    <button class="btn-primary btn-sm" type="submit">Save changes</button>
+                                </form>
+                            </details>
+                        </div>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="empty-hint">No departments yet. Add your first department above.</p>
+                    {% endif %}
+                </div>
+
+                <!-- ---------------- Add course ---------------- -->
+                <div class="card">
+                    <h2>Add course</h2>
+                    <form method="POST" action="{{ url_for('admin.add_course') }}" class="stack-form">
+                        <div class="form-group">
+                            <label for="course-dept">Department *</label>
+                            <select id="course-dept" name="department_id" required>
+                                <option value="">Choose a department</option>
+                                {% for d in departments %}
+                                <option value="{{ d.id }}">{{ d.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="course-name">Course name *</label>
+                            <input id="course-name" name="name" maxlength="160" required
+                                placeholder="e.g. Diploma in Information Communication Technology">
+                        </div>
+                        <div class="form-group">
+                            <label for="course-code">Course code (used in admission numbers)</label>
+                            <input id="course-code" name="code" maxlength="6"
+                                placeholder="e.g. ICT" style="text-transform:uppercase">
+                        </div>
+                        <div class="form-group">
+                            <label for="course-qual">Academic qualification</label>
+                            <input id="course-qual" name="qualification" maxlength="160"
+                                placeholder="e.g. KCSE mean grade C-">
+                        </div>
+                        <div class="form-group">
+                            <label for="course-duration">Duration</label>
+                            <input id="course-duration" name="duration" maxlength="80"
+                                placeholder="e.g. 18 months">
+                        </div>
+                        <div class="form-group">
+                            <label for="course-body">Exam body</label>
+                            <input id="course-body" name="exam_body" maxlength="120"
+                                placeholder="e.g. KNEC, NITA, CDACC">
+                        </div>
+                        <div class="form-group">
+                            <label for="course-mode">Student continues by</label>
+                            <select id="course-mode" name="progression_mode" class="course-mode">
+                                <option value="term">Terms — certificate courses</option>
+                                <option value="semester">Semesters — diploma courses</option>
+                                <option value="short">Short course — course work, then
+                                    attachment, then finished</option>
+                            </select>
+                        </div>
+                        <div class="form-group periods-group">
+                            <label for="course-periods">How many in the whole programme</label>
+                            <input id="course-periods" name="total_periods" type="number"
+                                min="1" max="12" value="3">
+                        </div>
+                        <div class="form-group">
+                            <label for="course-reg-fee">Registration fee (KES)</label>
+                            <input id="course-reg-fee" name="registration_fee" type="number"
+                                min="0" step="50" value="{{ default_registration_fee | int }}">
+                            <p class="field-hint">Charged once when the student registers.
+                                Courses differ — e.g. 1000, 2000 or 3000.</p>
+                        </div>
+                        <button class="btn-primary" type="submit">Add course</button>
+                    </form>
+                </div>
+            </div>
+
+            <!-- ---------------- Course list ---------------- -->
+            <div class="section-gap card full-width">
+                <h2>All courses</h2>
+
+                {% if courses %}
+                <div class="admin-list">
+                    {% for c in courses %}
+                    <div class="admin-item">
+                        <div class="admin-item-head">
+                            <div class="admin-item-title">
+                                <strong>{{ c.name }}</strong>
+                                <span class="tag">{{ c.department_name }}</span>
+                                {% if c.code %}<span class="tag tag-code">{{ c.code }}</span>{% endif %}
+                            </div>
+                            <form method="POST"
+                                action="{{ url_for('admin.delete_course', course_id=c.id) }}"
+                                onsubmit="return confirm('Delete the course “{{ c.name }}”?');">
+                                <button class="btn-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        </div>
+                        <div class="admin-item-meta">
+                            <span><b>Qualification:</b> {{ c.qualification or '—' }}</span>
+                            <span><b>Duration:</b> {{ c.duration or '—' }}</span>
+                            <span><b>Exam body:</b> {{ c.exam_body or '—' }}</span>
+                            <span><b>Registration fee:</b> KES {{ '{:,.0f}'.format(c.registration_fee) }}</span>
+                            <span><b>Continues by:</b>
+                                {% if c.progression_mode == 'short' %}
+                                    {{ short_course_periods | join(' then ') }}, then finished
+                                {% else %}
+                                    {{ c.total_periods or 3 }}
+                                    {{ 'semesters' if c.progression_mode == 'semester' else 'terms' }}
+                                {% endif %}
+                            </span>
+                        </div>
+                        <details class="admin-edit">
+                            <summary>Edit course</summary>
+                            <form method="POST"
+                                action="{{ url_for('admin.edit_course', course_id=c.id) }}"
+                                class="stack-form">
+                                <div class="form-group">
+                                    <label>Department *</label>
+                                    <select name="department_id" required>
+                                        {% for d in departments %}
+                                        <option value="{{ d.id }}"
+                                            {% if d.id == c.department_id %}selected{% endif %}>{{ d.name }}</option>
+                                        {% endfor %}
+                                    </select>
+                                </div>
+                                <div class="form-group">
+                                    <label>Course name *</label>
+                                    <input name="name" maxlength="160" value="{{ c.name }}" required>
+                                </div>
+                                <div class="form-group">
+                                    <label>Course code</label>
+                                    <input name="code" maxlength="6" value="{{ c.code or '' }}"
+                                        placeholder="e.g. ICT" style="text-transform:uppercase">
+                                </div>
+                                <div class="form-group">
+                                    <label>Academic qualification</label>
+                                    <input name="qualification" maxlength="160"
+                                        value="{{ c.qualification or '' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Duration</label>
+                                    <input name="duration" maxlength="80" value="{{ c.duration or '' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Exam body</label>
+                                    <input name="exam_body" maxlength="120"
+                                        value="{{ c.exam_body or '' }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Student continues by</label>
+                                    <select name="progression_mode" class="course-mode">
+                                        <option value="term"
+                                            {% if c.progression_mode == 'term' %}selected{% endif %}>
+                                            Terms — certificate courses</option>
+                                        <option value="semester"
+                                            {% if c.progression_mode == 'semester' %}selected{% endif %}>
+                                            Semesters — diploma courses</option>
+                                        <option value="short"
+                                            {% if c.progression_mode == 'short' %}selected{% endif %}>
+                                            Short course — course work, then attachment,
+                                            then finished</option>
+                                    </select>
+                                </div>
+                                <div class="form-group periods-group">
+                                    <label>How many in the whole programme</label>
+                                    <input name="total_periods" type="number" min="1" max="12"
+                                        value="{{ c.total_periods or 3 }}">
+                                </div>
+                                <div class="form-group">
+                                    <label>Registration fee (KES)</label>
+                                    <input name="registration_fee" type="number" min="0" step="50"
+                                        value="{{ c.registration_fee | int }}">
+                                </div>
+                                <button class="btn-primary btn-sm" type="submit">Save changes</button>
+                            </form>
+                        </details>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="empty-hint">No courses yet. Add a course using the form above.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+<script>
+    // A short course has fixed stages, so its period count is not something
+    // the office sets. Hide the box rather than leave a number that does nothing.
+    (function () {
+        document.querySelectorAll('form').forEach(function (form) {
+            var mode = form.querySelector('.course-mode');
+            var periods = form.querySelector('.periods-group');
+            if (!mode || !periods) { return; }
+
+            function sync() { periods.hidden = mode.value === 'short'; }
+            mode.addEventListener('change', sync);
+            sync();
+        });
+    })();
+</script>
+{% endblock %}

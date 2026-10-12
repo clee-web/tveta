@@ -1,0 +1,207 @@
+{% extends "base.html" %}
+{% from "_shell/_icons.html" import svg %}
+{% block title %}Continuation — AMUAA Student Portal{% endblock %}
+
+{% block content %}
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand">AMUAA Portal</div>
+        <nav>
+            <a href="{{ url_for('student.dashboard') }}">{{ svg('wallet') }}<span>My fees</span></a>
+            <a href="{{ url_for('student.exams') }}">{{ svg('edit') }}<span>My exams</span></a>
+            <a href="{{ url_for('student.continuation') }}" class="active">{{ svg('cap') }}<span>Continuation</span></a>
+            <a href="{{ url_for('student.qr') }}">{{ svg('qr') }}<span>My QR code</span></a>
+            <a href="{{ url_for('public.index') }}" target="_blank">{{ svg('globe') }}<span>Public site</span></a>
+        </nav>
+        <a href="{{ url_for('student.logout') }}" class="logout-btn">Logout</a>
+    </aside>
+
+    <main class="main" id="main-content" tabindex="-1">
+        <header class="topbar">
+            <h1>Continuation</h1>
+            <span class="user-badge">👤 {{ student.full_name }}</span>
+        </header>
+
+        <section class="content">
+
+            <div class="card full-width">
+                <h2>{{ student.course }} — {{ evidence.period }}</h2>
+
+                <ol class="ladder">
+                    {% for period in evidence.ladder %}
+                    <li class="lad {% if student.student_status == 'graduated' or (evidence.period_index and loop.index < evidence.period_index) %}done
+                        {% elif period == evidence.period %}now{% endif %}">
+                        {{ period }}
+                    </li>
+                    {% endfor %}
+                </ol>
+
+                <p class="empty-hint" style="margin-top:12px">
+                    {% if evidence.is_last %}
+                    You are on the final period of this programme. Once your results and
+                    fees are settled, the office can mark you as having completed the course.
+                    {% else %}
+                    Period {{ evidence.period_index }} of {{ evidence.ladder | length }}.
+                    Your next step is <b>{{ evidence.next }}</b>, which the admissions
+                    office approves after checking your fees and your exams.
+                    {% endif %}
+                </p>
+
+                {% if student.student_status in ('deferred', 'repeating') %}
+                <p class="chip chip-warn" style="margin-top:10px">
+                    {{ 'Your studies are on hold.' if student.student_status == 'deferred'
+                       else 'You are repeating this period.' }}
+                </p>
+                {% endif %}
+            </div>
+
+            <div class="section-gap card full-width">
+                <h2>What the office will see</h2>
+
+                <div class="evidence">
+                    <div class="ev {% if evidence.term_fees.outstanding > 0 %}ev-warn{% endif %}">
+                        <span class="ev-label">{{ evidence.period }} fees</span>
+                        <span class="ev-value">KES {{ '{:,.0f}'.format(evidence.term_fees.billed) }}</span>
+                        <span class="ev-note">
+                            {% if not evidence.term_fees.priced %}
+                            Fees for this period have not been published yet
+                            {% elif evidence.term_fees.outstanding > 0 %}
+                            KES {{ '{:,.0f}'.format(evidence.term_fees.outstanding) }} still owing
+                            {% else %}
+                            Fully paid
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="ev {% if evidence.balance > 0 %}ev-warn{% endif %}">
+                        <span class="ev-label">Overall balance</span>
+                        <span class="ev-value">KES {{ '{:,.0f}'.format(evidence.balance) if evidence.balance > 0 else '0' }}</span>
+                        <span class="ev-note">
+                            {% if evidence.balance > 0 %}
+                            Confirmed payments are counted here
+                            {% else %}
+                            Nothing outstanding on the bursar's side
+                            {% endif %}
+                        </span>
+                    </div>
+                    <div class="ev {% if evidence.results.average is not none and evidence.results.average < 50 %}ev-warn{% endif %}">
+                        <span class="ev-label">Exam average</span>
+                        <span class="ev-value">
+                            {% if evidence.results.average is not none %}{{ evidence.results.average }}%{% else %}—{% endif %}
+                        </span>
+                        <span class="ev-note">
+                            {% if not evidence.results.rows %}No exams recorded for this period yet{% endif %}
+                        </span>
+                    </div>
+                    <div class="ev {% if evidence.attendance is not none and evidence.attendance < 75 %}ev-warn{% endif %}">
+                        <span class="ev-label">Attendance</span>
+                        <span class="ev-value">
+                            {% if evidence.attendance is not none %}{{ evidence.attendance }}%{% else %}—{% endif %}
+                        </span>
+                        <span class="ev-note">
+                            {% if evidence.attendance is none %}Your class teacher has not taken the register yet{% endif %}
+                        </span>
+                    </div>
+                </div>
+
+                {% if evidence.advice[1] %}
+                <ul class="advice">
+                    {% for note in evidence.advice[1] %}<li>{{ note }}</li>{% endfor %}
+                </ul>
+                {% endif %}
+            </div>
+
+            <div class="section-gap card full-width">
+                <h2>Send a request</h2>
+
+                {% if evidence.pending %}
+                <p class="empty-hint">
+                    Your request to
+                    {% if evidence.pending.kind == 'advance' %}
+                    continue to {{ evidence.pending.to_period }}
+                    {% elif evidence.pending.kind == 'complete' %}
+                    be signed off as finished
+                    {% else %}
+                    pause your studies
+                    {% endif %}
+                    is with the office since {{ evidence.pending.requested_at[:10] }}.
+                    You will see the decision on this page.
+                </p>
+                {% elif student.student_status == 'graduated' %}
+                <p class="empty-hint">
+                    {{ student.course }} is complete. The office has signed you off —
+                    ask at the front desk for your certificate.
+                </p>
+                {% else %}
+                <form method="POST" action="{{ url_for('student.request_continuation') }}" class="stack-form">
+                    <div class="form-group">
+                        <label for="reason">Anything the office should know (optional)</label>
+                        <textarea id="reason" name="reason" maxlength="300" rows="3"
+                            placeholder="e.g. I have cleared my {{ evidence.period }} balance and am ready to continue."></textarea>
+                    </div>
+                    <div class="form-actions">
+                        {% if evidence.next %}
+                        <button class="btn-primary" type="submit" name="kind" value="advance">
+                            {% if student.student_status == 'deferred' %}
+                            Ask to return in {{ evidence.next }}
+                            {% else %}
+                            Request {{ evidence.next }}
+                            {% endif %}
+                        </button>
+                        {% else %}
+                        <button class="btn-primary" type="submit" name="kind" value="complete">
+                            Tell the office I finished {{ evidence.period }}
+                        </button>
+                        {% endif %}
+                        {% if student.student_status != 'deferred' and evidence.next %}
+                        <button class="btn-secondary" type="submit" name="kind" value="defer">
+                            Ask to pause my studies
+                        </button>
+                        {% endif %}
+                    </div>
+                </form>
+                {% endif %}
+            </div>
+
+            {% if past %}
+            <div class="section-gap card full-width">
+                <h2>Your requests</h2>
+                <ul class="chip-list">
+                    {% for p in past %}
+                    <li>
+                        <span>
+                            {% if p.kind == 'advance' %}
+                            Continue from {{ p.from_period }} to {{ p.to_period }}
+                            {% elif p.kind == 'complete' %}
+                            Sign off after {{ p.from_period }}
+                            {% else %}
+                            Pause my studies
+                            {% endif %}
+                            <small class="ev-note"> · sent {{ p.requested_at[:10] }}</small>
+                        </span>
+                        {% if p.status == 'pending' %}
+                        <span class="chip chip-warn">Waiting</span>
+                        {% else %}
+                        <span class="chip chip-{{ 'ok' if p.decision in ('advance', 'complete') else 'warn' }}">
+                            {{ {
+                                'advance': 'Approved',
+                                'repeat': 'Repeat required',
+                                'change_course': 'Transferred',
+                                'defer': 'Deferred',
+                                'complete': 'Completed',
+                                'rejected': 'Declined',
+                            }[p.decision] or p.decision }}
+                        </span>
+                        {% endif %}
+                    </li>
+                    {% if p.decision_notes %}
+                    <li><small class="ev-note">{{ p.decision_notes }}</small></li>
+                    {% endif %}
+                    {% endfor %}
+                </ul>
+            </div>
+            {% endif %}
+
+        </section>
+    </main>
+</div>
+{% endblock %}

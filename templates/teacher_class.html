@@ -1,0 +1,147 @@
+{% extends "base.html" %}
+{% block title %}{{ cls.name }} — Teacher Portal{% endblock %}
+
+{% block content %}
+{% set nav_active = 'class' %}
+<div class="layout">
+    {% include "_shell/_teacher_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        <header class="topbar">
+            <h1>{{ cls.name }}</h1>
+            <span class="user-badge">👩‍🏫 {{ teacher.full_name }}</span>
+        </header>
+
+        <section class="content">
+            <div class="stat-row">
+                <div class="stat">
+                    <span class="stat-label">Students</span>
+                    <span class="stat-value">{{ students | length }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Subjects</span>
+                    <span class="stat-value">{{ subjects | length }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Exams</span>
+                    <span class="stat-value">{{ exams | length }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Course</span>
+                    <span class="stat-value" style="font-size:15px">{{ cls.course }}</span>
+                </div>
+            </div>
+
+            <div class="detail-grid">
+                <!-- Subjects -->
+                <div class="card">
+                    <h2>Subjects / modules</h2>
+                    {% if subjects %}
+                    <div class="other-items-view">
+                        {% for s in subjects %}<span class="other-chip">{{ s.name }}</span>{% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="muted">The administrator has not added subjects for this class yet.</p>
+                    {% endif %}
+
+                    <h2 style="margin-top:22px">Recent registers</h2>
+                    {% if attendance_dates %}
+                    <div class="other-items-view">
+                        {% for d in attendance_dates %}
+                        <a class="other-chip"
+                            href="{{ url_for('teacher.attendance', class_id=cls.id, date=d.attend_date) }}">
+                            {{ d.attend_date }} · {{ d.c }} marked
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <p class="muted">No register has been marked yet.</p>
+                    {% endif %}
+                </div>
+
+                <!-- Quick actions -->
+                <div class="card">
+                    <h2>Quick actions</h2>
+                    <div class="stack-form">
+                        <a class="btn-primary" href="{{ url_for('teacher.attendance', class_id=cls.id) }}">
+                            ✅ Mark today's register (QR / manual)
+                        </a>
+                        <a class="btn-secondary" href="{{ url_for('teacher.exams') }}">
+                            📝 Create or manage exams
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Students -->
+            <div class="section-gap card full-width">
+                <h2>Students ({{ students | length }})</h2>
+                {% if students %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>#</th>
+                                <th>Admission No</th>
+                                <th>Name</th>
+                                <th>Phone</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in students %}
+                            <tr>
+                                <td class="muted">{{ loop.index }}</td>
+                                <td><code>{{ s.admission_number }}</code></td>
+                                <td>{{ s.full_name }}</td>
+                                <td>{{ s.phone or '—' }}</td>
+                                <td class="muted">{{ s.email or '—' }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="muted">No admitted students in this class yet.</p>
+                {% endif %}
+            </div>
+
+            <!-- Exams -->
+            <div class="section-gap card full-width">
+                <h2>Exams</h2>
+                {% if exams %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>Exam</th>
+                                <th>Subject</th>
+                                <th>Period</th>
+                                <th>Max</th>
+                                <th>Results</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for e in exams %}
+                            <tr>
+                                <td>{{ e.title }}</td>
+                                <td>{{ e.subject_name or '—' }}</td>
+                                <td>{{ e.term or '—' }}</td>
+                                <td>{{ '{:,.0f}'.format(e.max_score) }}</td>
+                                <td>{{ e.result_count }}</td>
+                                <td><a class="btn-secondary btn-sm"
+                                        href="{{ url_for('teacher.exam_detail', exam_id=e.id) }}">Open</a></td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="muted">No exams created for this class yet.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

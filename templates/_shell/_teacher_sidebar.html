@@ -1,0 +1,27 @@
+{#- Shared teacher sidebar. Each portal page used to hand-copy its own nav, which
+    is how the duplicate "My classes" link and the missing active states appeared.
+    Expects: teacher, optional cls, and nav_active ('dashboard'|'exams'|'class'|'attendance'). -#}
+{% from "_shell/_icons.html" import svg %}
+<aside class="sidebar">
+    <div class="brand">Teacher Portal</div>
+    <nav>
+        <a href="{{ url_for('teacher.dashboard') }}"{{ ' class="active"' if nav_active in ('dashboard', 'class') else '' }}>
+            {{ svg('building') }}<span>My classes</span>
+        </a>
+        {% if cls %}
+        <a href="{{ url_for('teacher.class_detail', class_id=cls.id) }}"{{ ' class="active"' if nav_active == 'class' else '' }}>
+            {{ svg('users') }}<span>{{ cls.name }}</span>
+        </a>
+        <a href="{{ url_for('teacher.attendance', class_id=cls.id) }}"{{ ' class="active"' if nav_active == 'attendance' else '' }}>
+            {{ svg('check-circle') }}<span>Mark register</span>
+        </a>
+        {% endif %}
+        <a href="{{ url_for('teacher.exams') }}"{{ ' class="active"' if nav_active == 'exams' else '' }}>
+            {{ svg('edit') }}<span>Exams</span>
+        </a>
+        <a href="{{ url_for('public.index') }}" target="_blank" rel="noopener">
+            {{ svg('globe') }}<span>Public site</span>
+        </a>
+    </nav>
+    <a href="{{ url_for('teacher.logout') }}" class="logout-btn">Logout</a>
+</aside>

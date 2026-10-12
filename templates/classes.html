@@ -1,0 +1,108 @@
+{% extends "base.html" %}
+{% block title %}Classes — AMUAA Admin{% endblock %}
+
+{% block content %}
+{% set nav_active = "classes" %}
+{% set page_title = "Classes & Subjects" %}
+{% set page_subtitle = "Grouped by course, year and study mode" %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+    {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+            <div class="card">
+                <h2>Create a class</h2>
+                <p class="muted" style="margin-bottom:14px">
+                    A class groups students by <b>course + academic year + study option</b>.
+                    Students are added automatically from their applications. Add
+                    <b>subjects / modules</b> to each class for exam results.
+                </p>
+                <form method="POST" action="{{ url_for('admin.add_class') }}" class="stack-form">
+                    <div class="form-group">
+                        <label for="c-course">Course *</label>
+                        <select id="c-course" name="course" required>
+                            <option value="">Choose a course</option>
+                            {% for c in courses %}<option value="{{ c.name }}">{{ c.name }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="c-year">Academic year *</label>
+                        <input id="c-year" name="academic_year" maxlength="9" required
+                            placeholder="e.g. 2026" value="{{ current_year }}">
+                    </div>
+                    <div class="form-group">
+                        <label for="c-mode">Study option *</label>
+                        <select id="c-mode" name="study_mode" required>
+                            <option value="">Choose an option</option>
+                            {% for m in mode_options %}<option value="{{ m }}">{{ m }}</option>{% endfor %}
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="c-name">Display name (optional)</label>
+                        <input id="c-name" name="name" maxlength="120"
+                            placeholder="Defaults to “Course Year Mode”">
+                    </div>
+                    <button class="btn-primary" type="submit">Create class</button>
+                </form>
+            </div>
+
+            <div class="section-gap card full-width">
+                <h2>All classes</h2>
+                {% if classes %}
+                <div class="admin-list">
+                    {% for c in classes %}
+                    <div class="admin-item">
+                        <div class="admin-item-head">
+                            <div class="admin-item-title">
+                                <strong>{{ c.name }}</strong>
+                                <span class="tag">{{ c.student_count }} student{{ '' if c.student_count == 1 else 's' }}</span>
+                                <span class="tag">{{ c.teacher_count }} teacher{{ '' if c.teacher_count == 1 else 's' }}</span>
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.delete_class', class_id=c.id) }}"
+                                onsubmit="return confirm('Delete class “{{ c.name }}”? Attendance and exams for it are removed.');">
+                                <button class="btn-danger btn-sm" type="submit">Delete</button>
+                            </form>
+                        </div>
+                        <div class="admin-item-meta">
+                            <span><b>Course:</b> {{ c.course }}</span>
+                            <span><b>Year:</b> {{ c.academic_year }}</span>
+                            <span><b>Study option:</b> {{ c.study_mode }}</span>
+                            <a class="btn-secondary btn-sm"
+                                href="{{ url_for('admin.class_qr_cards', class_id=c.id) }}" target="_blank">
+                                🔳 Print QR cards
+                            </a>
+                        </div>
+
+                        <div class="subject-block">
+                            <div class="subject-chips">
+                                {% for s in subjects_by_class.get(c.id, []) %}
+                                <span class="other-chip">{{ s.name }}
+                                    <form method="POST"
+                                        action="{{ url_for('admin.delete_subject', subject_id=s.id) }}"
+                                        class="inline-form">
+                                        <button type="submit" aria-label="Remove subject">✕</button>
+                                    </form>
+                                </span>
+                                {% else %}
+                                <span class="muted">No subjects yet.</span>
+                                {% endfor %}
+                            </div>
+                            <form method="POST" action="{{ url_for('admin.add_subject', class_id=c.id) }}"
+                                class="inline-add">
+                                <input name="name" maxlength="120" placeholder="Add subject / module" required>
+                                <button class="btn-secondary btn-sm" type="submit">Add</button>
+                            </form>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+                {% else %}
+                <p class="empty-hint">No classes yet. Create your first class above.</p>
+                {% endif %}
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

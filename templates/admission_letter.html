@@ -1,0 +1,512 @@
+{% extends "base.html" %}
+{% block title %}Admission Letter — {{ application.full_name }}{% endblock %}
+
+{% block content %}
+<style>
+    .letter-page {
+        background: #fff;
+        max-width: 760px;
+        margin: 0 auto 30px;
+        padding: 46px;
+        box-shadow: 0 6px 24px rgba(0, 0, 0, .12);
+        color: #1e293b;
+    }
+
+    .print-head {
+        display: flex;
+        align-items: center;
+        gap: 16px;
+        border-bottom: 3px solid #762b3a;
+        padding-bottom: 16px;
+        margin-bottom: 26px;
+    }
+
+    .print-head img {
+        width: 120px;
+        height: 72px;
+        object-fit: contain;
+    }
+
+    .print-head h1 {
+        font-size: 22px;
+        margin: 0;
+        color: #762b3a;
+    }
+
+    .print-head p {
+        margin: 2px 0 0;
+        font-size: 12px;
+        color: #64748b;
+    }
+
+    .letter-date {
+        text-align: right;
+        font-size: 13px;
+        color: #64748b;
+        margin-bottom: 20px;
+    }
+
+    .letter-title {
+        text-align: center;
+        font-size: 17px;
+        letter-spacing: 3px;
+        text-transform: uppercase;
+        margin: 0 0 8px;
+        color: #762b3a;
+    }
+
+    .letter-subtitle {
+        text-align: center;
+        font-size: 13px;
+        color: #64748b;
+        margin: 0 0 24px;
+    }
+
+    .admission-no {
+        text-align: center;
+        font-size: 15px;
+        margin-bottom: 26px;
+    }
+
+    .admission-no code {
+        background: #f1f5f9;
+        padding: 4px 12px;
+        border-radius: 6px;
+        font-size: 15px;
+        letter-spacing: 1px;
+    }
+
+    .letter-body {
+        font-size: 14px;
+        line-height: 1.9;
+    }
+
+    .letter-body p {
+        margin: 0 0 14px;
+    }
+
+    .letter-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 13px;
+        margin: 20px 0;
+    }
+
+    .letter-table th,
+    .letter-table td {
+        border: 1px solid #e2e8f0;
+        padding: 9px 12px;
+        text-align: left;
+    }
+
+    .letter-table th {
+        background: #f8fafc;
+        width: 45%;
+        color: #475569;
+    }
+
+    .fee-table th,
+    .fee-table td {
+        text-align: right;
+    }
+
+    .fee-table th:first-child,
+    .fee-table td:first-child {
+        text-align: left;
+    }
+
+    .fee-table thead th {
+        background: #762b3a;
+        color: #fff;
+        font-weight: 700;
+    }
+
+    .fee-table tfoot td {
+        background: #f8fafc;
+        font-weight: 700;
+    }
+
+    .fee-summary-box {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 14px 18px;
+        margin: 18px 0;
+        font-size: 13px;
+    }
+
+    .fee-summary-box .row {
+        display: flex;
+        justify-content: space-between;
+        padding: 5px 0;
+        border-bottom: 1px dashed #e2e8f0;
+    }
+
+    .fee-summary-box .row:last-child {
+        border-bottom: none;
+        font-weight: 700;
+        color: #762b3a;
+        font-size: 15px;
+        padding-top: 9px;
+    }
+
+    .item-list {
+        margin: 6px 0 18px;
+        padding-left: 18px;
+        font-size: 13px;
+        color: #475569;
+    }
+
+    .item-list li {
+        margin-bottom: 5px;
+    }
+
+    .rules-section {
+        margin-bottom: 18px;
+        page-break-inside: avoid;
+    }
+
+    .rules-section h3 {
+        font-size: 14px;
+        color: #762b3a;
+        margin: 0 0 8px;
+    }
+
+    .rules-list {
+        margin: 0;
+        padding-left: 20px;
+        font-size: 13px;
+        line-height: 1.8;
+        color: #334155;
+    }
+
+    .rules-list li {
+        margin-bottom: 4px;
+    }
+
+    .rules-ack {
+        margin-top: 26px;
+        border-top: 1px solid #e2e8f0;
+        padding-top: 16px;
+        font-size: 13px;
+    }
+
+    .rules-ack .line {
+        border-bottom: 1px solid #94a3b8;
+        width: 260px;
+        margin: 26px 0 4px;
+        color: #64748b;
+        font-size: 12px;
+    }
+
+    .portal-box {
+        border: 2px dashed #d8ae67;
+        background: #fdf6e3;
+        border-radius: 10px;
+        padding: 16px 18px;
+        margin: 20px 0;
+    }
+
+    .portal-box h3 {
+        margin: 0 0 4px;
+        font-size: 13px;
+        text-transform: uppercase;
+        letter-spacing: 1.5px;
+        color: #92400e;
+    }
+
+    .letter-sign {
+        margin-top: 40px;
+        font-size: 13px;
+    }
+
+    .letter-sign .line {
+        border-top: 1px solid #94a3b8;
+        width: 240px;
+        padding-top: 6px;
+        color: #64748b;
+    }
+
+    .page-tag {
+        text-align: center;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 2px;
+        color: #94a3b8;
+        margin: 8px 0 0;
+    }
+
+    .print-actions {
+        text-align: center;
+        margin: 24px 0;
+    }
+
+    @media print {
+        body.admin-body {
+            background: #fff;
+        }
+
+        .letter-page {
+            box-shadow: none;
+            margin: 0;
+            max-width: none;
+            padding: 0;
+            page-break-after: always;
+        }
+
+        .letter-page:last-of-type {
+            page-break-after: auto;
+        }
+
+        .page-tag,
+        .print-actions,
+        .flash-container {
+            display: none !important;
+        }
+    }
+</style>
+
+<!-- ================= PAGE 1 — Admission letter ================= -->
+<div class="letter-page">
+    <div class="print-head">
+        <div style="display:flex;align-items:center;gap:16px;flex:1">
+            <img src="{{ url_for('public.assets', filename='AMUAA-IPS-LOGO-2026.png') }}" alt="AMUAA logo" style="width:120px;height:72px;object-fit:contain">
+            <div>
+                <h1>AMUAA Institute of Professional Studies</h1>
+                <p>Riat Market, opposite Kisumu International Airport · info@amuaaips.co.ke · 0722 797 244</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="letter-date">{{ application.admitted_at[:10] if application.admitted_at else '' }}</div>
+
+    <div class="letter-title">Admission Letter</div>
+    <div class="admission-no">Admission number: <code>{{ application.admission_number }}</code></div>
+
+    <div class="letter-body">
+        <p>Dear {{ application.full_name }},</p>
+        <p>
+            Congratulations! Following your application to AMUAA Institute of Professional Studies, we are pleased
+            to offer you admission to the course below. You are now a student of the institute. You are expected to
+            report to the admissions office with this letter to complete your registration.
+        </p>
+
+        <table class="letter-table">
+            <tr>
+                <th>Student name</th>
+                <td>{{ application.full_name }}</td>
+            </tr>
+            <tr>
+                <th>Admission number</th>
+                <td>{{ application.admission_number }}</td>
+            </tr>
+            <tr>
+                <th>Course</th>
+                <td>{{ application.course }}</td>
+            </tr>
+            <tr>
+                <th>Study option</th>
+                <td>{{ application.study_mode }}</td>
+            </tr>
+            <tr>
+                <th>Academic year</th>
+                <td>{{ application.academic_year or '—' }}</td>
+            </tr>
+            <tr>
+                <th>Registration fee</th>
+                <td>KES {{ '{:,.0f}'.format(info.registration) }} (paid)</td>
+            </tr>
+            <tr>
+                <th>Total fees due ({{ application.academic_year }})</th>
+                <td>KES {{ '{:,.0f}'.format(info.total_due) }}</td>
+            </tr>
+            <tr>
+                <th>Outstanding balance</th>
+                <td>KES {{ '{:,.0f}'.format(info.balance) }}</td>
+            </tr>
+        </table>
+
+        <p>
+            The full fee structure is on <strong>page 2</strong>, and the school rules and regulations are on
+            <strong>page 3</strong>. Please read both before reporting.
+        </p>
+
+        <p>
+            Your student portal account has been created. Use the login details below to view your fee statement
+            and payment history at <strong>/student/login</strong>.
+        </p>
+
+        <div class="portal-box">
+            <h3>Student Portal Login</h3>
+            <table class="letter-table" style="margin:10px 0 8px">
+                <tr>
+                    <th style="width:45%">Admission number</th>
+                    <td><strong>{{ application.admission_number }}</strong></td>
+                </tr>
+                <tr>
+                    <th>First-login password</th>
+                    <td>
+                        {% if application.student_initial_password %}
+                        <strong style="font-size:16px;letter-spacing:2px">{{ application.student_initial_password }}</strong>
+                        {% else %}
+                        <em>Already changed — use your own password.</em>
+                        {% endif %}
+                    </td>
+                </tr>
+            </table>
+            {% if application.student_initial_password %}
+            <p style="margin:0;font-size:12px;color:#92400e">
+                For your security, you will be asked to set a new password the first time you log in.
+            </p>
+            {% endif %}
+        </div>
+
+        <p>
+            We look forward to welcoming you to AMUAA. {{ school_motto }}
+        </p>
+    </div>
+
+    <div class="letter-sign">
+        <div class="line">Registrar / Admissions Office</div>
+    </div>
+
+    <p class="page-tag">Page 1 of 3</p>
+</div>
+
+<!-- ================= PAGE 2 — School fees ================= -->
+<div class="letter-page">
+    <div class="print-head">
+        <div style="display:flex;align-items:center;gap:16px;flex:1">
+            <img src="{{ url_for('public.assets', filename='AMUAA-IPS-LOGO-2026.png') }}" alt="AMUAA logo" style="width:120px;height:72px;object-fit:contain">
+            <div>
+                <h1>AMUAA Institute of Professional Studies</h1>
+                <p>Riat Market, opposite Kisumu International Airport · info@amuaaips.co.ke · 0722 797 244</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="letter-title">School Fees</div>
+    <div class="letter-subtitle">
+        {{ application.course }} · {{ application.academic_year or '—' }} · {{ application.full_name }}
+        ({{ application.admission_number }})
+    </div>
+
+    <div class="letter-body">
+        {% if info.structures %}
+        <table class="letter-table fee-table">
+            <thead>
+                <tr>
+                    <th>{{ period_word(terms) }}</th>
+                    <th>Tuition</th>
+                    <th>Exam</th>
+                    <th>Other</th>
+                    <th>{{ period_word(terms) }} total</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for s in info.structures %}
+                <tr>
+                    <td>{{ s.term }}</td>
+                    <td>KES {{ '{:,.0f}'.format(s.tuition_fee or 0) }}</td>
+                    <td>KES {{ '{:,.0f}'.format(s.exam_fee or 0) }}</td>
+                    <td>KES {{ '{:,.0f}'.format(s.other_fee or 0) }}</td>
+                    <td>KES {{ '{:,.0f}'.format((s.tuition_fee or 0) + (s.exam_fee or 0) + (s.other_fee or 0)) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+            <tfoot>
+                <tr>
+                    <td>Total</td>
+                    <td>KES {{ '{:,.0f}'.format(info.tuition) }}</td>
+                    <td>KES {{ '{:,.0f}'.format(info.exam) }}</td>
+                    <td>KES {{ '{:,.0f}'.format(info.other) }}</td>
+                    <td>KES {{ '{:,.0f}'.format(info.fees_total) }}</td>
+                </tr>
+            </tfoot>
+        </table>
+
+        {% set other_lines = [] %}
+        {% for s in info.structures %}{% for it in s.other_items %}{% set _ = other_lines.append(s.term ~ ' — ' ~ it.name ~ ': KES ' ~ '{:,.0f}'.format(it.amount)) %}{% endfor %}{% endfor %}
+        {% if other_lines %}
+        <p style="margin-bottom:4px"><strong>Other fees (itemised):</strong></p>
+        <ul class="item-list">
+            {% for line in other_lines %}<li>{{ line }}</li>{% endfor %}
+        </ul>
+        {% endif %}
+        {% else %}
+        <p>
+            No fee structure has been published for {{ application.course }} — {{ application.academic_year or '—' }}
+            yet. Please confirm the current fees with the admissions office.
+        </p>
+        {% endif %}
+
+        <div class="fee-summary-box">
+            <div class="row"><span>Registration fee</span><span>KES {{ '{:,.0f}'.format(info.registration) }}</span></div>
+            <div class="row"><span>Total fees due ({{ application.academic_year }})</span><span>KES {{ '{:,.0f}'.format(info.total_due) }}</span></div>
+            <div class="row"><span>Amount paid</span><span>KES {{ '{:,.0f}'.format(info.paid) }}</span></div>
+            <div class="row"><span>Outstanding balance</span><span>KES {{ '{:,.0f}'.format(info.balance) }}</span></div>
+        </div>
+
+        <p style="margin-bottom:6px"><strong>Payment instructions</strong></p>
+        <ul class="item-list">
+            {% for line in payment_instructions %}<li>{{ line }}</li>{% endfor %}
+        </ul>
+
+        <p style="font-size:12px;color:#64748b">
+            The institute reserves the right to review the fee structure. Any revision will be communicated in
+            writing through the admissions office or the student portal.
+        </p>
+    </div>
+
+    <p class="page-tag">Page 2 of 3</p>
+</div>
+
+<!-- ================= PAGE 3 — Rules and regulations ================= -->
+<div class="letter-page">
+    <div class="print-head">
+        <div style="display:flex;align-items:center;gap:16px;flex:1">
+            <img src="{{ url_for('public.assets', filename='AMUAA-IPS-LOGO-2026.png') }}" alt="AMUAA logo" style="width:120px;height:72px;object-fit:contain">
+            <div>
+                <h1>AMUAA Institute of Professional Studies</h1>
+                <p>Riat Market, opposite Kisumu International Airport · info@amuaaips.co.ke · 0722 797 244</p>
+            </div>
+        </div>
+    </div>
+
+    <div class="letter-title">Rules and Regulations</div>
+    <div class="letter-subtitle">{{ application.full_name }} · {{ application.admission_number }}</div>
+
+    <div class="letter-body">
+        <p>
+            By accepting this admission you agree to observe the following rules and regulations of AMUAA Institute
+            of Professional Studies. They exist to keep our learning environment safe, fair and productive.
+        </p>
+
+        {% for title, rules in school_rules %}
+        <div class="rules-section">
+            <h3>{{ title }}</h3>
+            <ul class="rules-list">
+                {% for rule in rules %}<li>{{ rule }}</li>{% endfor %}
+            </ul>
+        </div>
+        {% endfor %}
+
+        <div class="rules-ack">
+            <p>I, <strong>{{ application.full_name }}</strong> (Admission No
+                <strong>{{ application.admission_number }}</strong>), confirm that I have read, understood and
+                accepted the rules and regulations above.</p>
+            <div class="line">Student signature &amp; date</div>
+            <div class="line">Parent / guardian signature &amp; date</div>
+        </div>
+
+        <p class="section-gap" style="font-size:12px; color:#64748b">{{ school_motto }}</p>
+    </div>
+
+    <p class="page-tag">Page 3 of 3</p>
+</div>
+
+<div class="print-actions">
+    <button class="btn-primary" type="button" onclick="window.print()">🖨 Print admission letter (3 pages)</button>
+    <a class="btn-secondary" href="{{ url_for('admin.student_profile', application_id=application.id) }}">← Back to
+        student</a>
+</div>
+{% endblock %}

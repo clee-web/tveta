@@ -1,0 +1,8 @@
+# Versions the app was built and tested against (Python 3.14 locally, 3.10+ on the host).
+Flask==3.0.0
+Werkzeug==3.1.8
+Flask-Mail==0.9.1
+qrcode==8.2
+# qrcode.make() renders PNGs through Pillow; the exam cards and QR slips need it.
+Pillow==11.3.0
+openpyxl==3.1.5

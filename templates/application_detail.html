@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+{% block title %}{{ application.full_name }} — Application{% endblock %}
+
+{% block content %}
+{% set nav_active = "applications" %}
+{% set page_title = application.full_name %}
+{% set page_subtitle = 'Application ' ~ application.id[:8]|upper %}
+{% macro topbar_actions() %}
+{% from "_shell/_icons.html" import svg %}
+<span class="badge badge-{{ application.status }}">{{ application.status }}</span>
+<a class="btn-primary btn-sm" target="_blank" rel="noopener"
+    href="{{ url_for('admin.print_application', application_id=application.id) }}">
+    {{ svg('download', 'ic-xs') }} Print application
+</a>
+{% endmacro %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+    {% include "_shell/_topbar.html" %}
+
+        <section class="content detail-grid detail-grid-two">
+
+            <a class="back-link full-width" href="{{ back_link }}">&larr; Back to applications</a>
+
+            <!-- ============ Applicant details ============ -->
+            <div class="card">
+                <h2>Applicant details</h2>
+                <dl class="detail-list">
+                    <dt>Reference</dt>
+                    <dd><code>{{ application.id[:8]|upper }}</code></dd>
+
+                    <dt>Full name</dt>
+                    <dd>{{ application.full_name }}</dd>
+
+                    <dt>Surname</dt>
+                    <dd>{{ application.surname or '—' }}</dd>
+
+                    <dt>First name</dt>
+                    <dd>{{ application.first_name or '—' }}</dd>
+
+                    <dt>Middle name</dt>
+                    <dd>{{ application.middle_name or '—' }}</dd>
+
+                    <dt>Email</dt>
+                    <dd><a href="mailto:{{ application.email }}">{{ application.email }}</a></dd>
+
+                    <dt>Mobile number</dt>
+                    <dd><a href="tel:{{ application.phone }}">{{ application.phone }}</a></dd>
+
+                    <dt>Nationality</dt>
+                    <dd>{{ application.nationality or '—' }}</dd>
+
+                    <dt>Date of birth</dt>
+                    <dd>{{ application.date_of_birth or '—' }}</dd>
+
+                    <dt>Medical condition</dt>
+                    <dd>{{ application.medical_condition or '—' }}</dd>
+
+                    <dt>Course</dt>
+                    <dd>{{ application.course }}</dd>
+
+                    <dt>Study mode</dt>
+                    <dd>{{ application.study_mode }}</dd>
+
+                    <dt>Course dates</dt>
+                    <dd>{{ application.start_date or '—' }} &rarr; {{ application.end_date or '—' }}</dd>
+
+                    <dt>Next of kin</dt>
+                    <dd>{{ application.next_of_kin_name or '—' }}{% if application.next_of_kin_relationship %} ({{ application.next_of_kin_relationship }}){% endif %}</dd>
+
+                    <dt>Sponsor</dt>
+                    <dd>{{ application.sponsor_name or '—' }}</dd>
+
+                    <dt>Sponsor organisation</dt>
+                    <dd>{{ application.sponsor_organisation or '—' }}</dd>
+
+                    <dt>Sponsor contact person</dt>
+                    <dd>{{ application.sponsor_contact_person or '—' }}</dd>
+
+                    <dt>Previous education</dt>
+                    <dd>{{ application.previous_education or '—' }}</dd>
+
+                    <dt>Submitted</dt>
+                    <dd>{{ application.created_at[:19].replace('T',' ') }}</dd>
+
+                    <dt>Status</dt>
+                    <dd><span class="badge badge-{{ application.status }}">{{ application.status }}</span></dd>
+                </dl>
+            </div>
+
+            <!-- ============ Uploaded documents ============ -->
+            <div class="card">
+                <h2>Uploaded documents</h2>
+                {% if documents %}
+                <ul class="doc-list">
+                    {% for d in documents %}
+                    <li>
+                        <div class="doc-info">
+                            <span class="doc-cat">{{ d.category|upper }}</span>
+                            <strong>{{ d.original_name }}</strong>
+                            <span class="muted"> · {{ (d.size_bytes / 1024)|round(1) }} KB</span>
+                        </div>
+                        <div class="doc-actions">
+                            <button type="button" class="btn-secondary doc-preview-trigger"
+                                data-preview-url="{{ url_for('admin.view_document', application_id=application.id, stored_name=d.stored_name) }}"
+                                data-preview-name="{{ d.original_name }}" data-preview-mime="{{ d.mime_type or '' }}">
+                                👁 Preview
+                            </button>
+                            <a class="btn-link" download
+                                href="{{ url_for('admin.view_document', application_id=application.id, stored_name=d.stored_name) }}">
+                                Download
+                            </a>
+                        </div>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="muted">No documents uploaded.</p>
+                {% endif %}
+            </div>
+
+            <!-- ============ Verification form ============ -->
+            <div class="card full-width">
+                <h2>Verification</h2>
+                <form method="POST" action="{{ url_for('admin.update_status', application_id=application.id) }}"
+                    id="verification-form">
+
+                    <input type="hidden" name="action" id="status-action" value="save">
+                    <input type="hidden" name="back" value="{{ back_link }}">
+
+                    <div class="status-buttons">
+                        <button type="submit" name="status" value="pending"
+                            class="btn-status {% if application.status=='pending' %}active{% endif %}">
+                            ⏳ Pending
+                        </button>
+
+                        <button type="submit" name="status" value="verified" id="btn-verify"
+                            class="btn-status verified {% if application.status=='verified' %}active{% endif %}">
+                            ✓ Verify &amp; Print
+                        </button>
+
+                        <button type="submit" name="status" value="rejected"
+                            class="btn-status rejected {% if application.status=='rejected' %}active{% endif %}">
+                            ✗ Reject
+                        </button>
+                    </div>
+
+                    <label class="notes-label" for="notes">Admin notes (visible only to staff)</label>
+                    <textarea id="notes" name="notes" rows="4"
+                        placeholder="Add notes about verification, missing documents, follow-up calls…">{{ application.notes or '' }}</textarea>
+
+                    <div class="form-actions">
+                        <button type="submit" name="save_notes" value="1" class="btn-primary">Save notes</button>
+
+                        <button type="submit"
+                            formaction="{{ url_for('admin.delete_application', application_id=application.id) }}"
+                            class="btn-danger"
+                            onclick="return confirm('Delete this application and all its files? This cannot be undone.');">
+                            🗑 Delete application
+                        </button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- ============ Fees & admission ============ -->
+            <div class="card full-width">
+                <h2>Fees &amp; admission</h2>
+
+                <div class="fee-status-row">
+                    <div class="fee-status">
+                        <span class="muted">Registration fee</span>
+                        {% if application.registration_paid %}
+                        <span class="badge badge-verified">Paid</span>
+                        {% else %}
+                        <span class="badge badge-pending">Not paid</span>
+                        {% endif %}
+                    </div>
+                    <div class="fee-status">
+                        <span class="muted">Admission number</span>
+                        {% if application.admission_number %}
+                        <code>{{ application.admission_number }}</code>
+                        {% else %}
+                        <span class="muted">Not issued</span>
+                        {% endif %}
+                    </div>
+                    <div class="fee-status">
+                        <span class="muted">Academic year</span>
+                        <strong>{{ fee_info.academic_year or '—' }}</strong>
+                    </div>
+                    <div class="fee-status">
+                        <span class="muted">Portal password</span>
+                        {% if application.student_initial_password %}
+                        <code>{{ application.student_initial_password }}</code>
+                        {% elif application.admission_number %}
+                        <span class="muted">Set by student</span>
+                        {% else %}
+                        <span class="muted">—</span>
+                        {% endif %}
+                    </div>
+                    <div class="fee-status">
+                        <span class="muted">Balance</span>
+                        <strong>KES {{ '{:,.0f}'.format(fee_info.balance) }}</strong>
+                    </div>
+                </div>
+
+                <div class="form-actions">
+                    <a class="btn-secondary" target="_blank"
+                        href="{{ url_for('admin.registration_slip', application_id=application.id) }}">
+                        🖨 Registration fee slip
+                    </a>
+
+                    {% if not application.registration_paid %}
+                    <form method="POST"
+                        action="{{ url_for('admin.mark_registration_paid', application_id=application.id) }}">
+                        <button class="btn-primary" type="submit"
+                            onclick="return confirm('Record registration fee payment of KES {{ '{:,.0f}'.format(fee_info.registration) }}?');">
+                            ✓ Mark registration fee paid
+                        </button>
+                    </form>
+                    {% endif %}
+
+                    {% if application.registration_paid and not application.admission_number %}
+                    <form method="POST" action="{{ url_for('admin.issue_admission', application_id=application.id) }}">
+                        <button class="btn-primary" type="submit">🎓 Issue admission letter</button>
+                    </form>
+                    {% endif %}
+
+                    {% if application.admission_number %}
+                    <a class="btn-secondary" target="_blank"
+                        href="{{ url_for('admin.admission_letter', application_id=application.id) }}">
+                        🖨 Admission letter
+                    </a>
+                    <a class="btn-secondary" target="_blank"
+                        href="{{ url_for('admin.student_qr_card', application_id=application.id) }}">
+                        🔳 Student QR card
+                    </a>
+                    <form method="POST"
+                        action="{{ url_for('admin.reset_student_password', application_id=application.id) }}"
+                        onsubmit="return confirm('Reset the student portal password? The student will need the new password to log in again.');">
+                        <button class="btn-secondary" type="submit">🔑 Reset portal password</button>
+                    </form>
+                    {% endif %}
+                </div>
+
+                <div class="fee-summary">
+                    <div><span>Tuition</span><b>KES {{ '{:,.0f}'.format(fee_info.tuition) }}</b></div>
+                    <div><span>Exam</span><b>KES {{ '{:,.0f}'.format(fee_info.exam) }}</b></div>
+                    <div><span>Other</span><b>KES {{ '{:,.0f}'.format(fee_info.other) }}</b></div>
+                    <div><span>Registration</span><b>KES {{ '{:,.0f}'.format(fee_info.registration) }}</b></div>
+                    <div class="fee-total"><span>Total due</span><b>KES {{ '{:,.0f}'.format(fee_info.total_due) }}</b></div>
+                    <div><span>Paid</span><b>KES {{ '{:,.0f}'.format(fee_info.paid) }}</b></div>
+                    <div class="fee-balance"><span>Balance</span><b>KES {{ '{:,.0f}'.format(fee_info.balance) }}</b></div>
+                </div>
+
+                <h3 class="subhead">{{ fee_info.academic_year }} fee breakdown</h3>
+                {% if fee_info.structures %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>{{ period_word(terms) }}</th>
+                                <th>Tuition</th>
+                                <th>Exam</th>
+                                <th>Other</th>
+                                <th>Total</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for s in fee_info.structures %}
+                            <tr>
+                                <td>{{ s.term }}</td>
+                                <td>KES {{ '{:,.0f}'.format(s.tuition_fee or 0) }}</td>
+                                <td>KES {{ '{:,.0f}'.format(s.exam_fee or 0) }}</td>
+                                <td>KES {{ '{:,.0f}'.format(s.other_fee or 0) }}</td>
+                                <td>KES {{ '{:,.0f}'.format((s.tuition_fee or 0) + (s.exam_fee or 0) + (s.other_fee or 0)) }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% set other_lines = [] %}
+                {% for s in fee_info.structures %}{% for it in s.other_items %}{% set _ = other_lines.append(s.term ~ ' · ' ~ it.name ~ ' — KES ' ~ '{:,.0f}'.format(it.amount)) %}{% endfor %}{% endfor %}
+                {% if other_lines %}
+                <div class="other-items-view">
+                    {% for line in other_lines %}<span class="other-chip">{{ line }}</span>{% endfor %}
+                </div>
+                {% endif %}
+                {% else %}
+                <p class="muted">No fee structure has been set for {{ application.course }} —
+                    {{ fee_info.academic_year }} yet. Add one on the <a
+                        href="{{ url_for('admin.fees') }}">Fees</a> page.</p>
+                {% endif %}
+
+                <h3 class="subhead">Payment history</h3>
+                {% if fee_info.payments %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>{{ period_word(terms) }}</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Recorded by</th>
+                                <th>Status</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in fee_info.payments %}
+                            <tr>
+                                <td class="muted">{{ p.paid_at[:16].replace('T',' ') }}</td>
+                                <td>{{ p.category }}</td>
+                                <td>{{ p.term or '—' }}</td>
+                                <td>KES {{ '{:,.0f}'.format(p.amount) }}</td>
+                                <td>{{ p.method or '—' }}</td>
+                                <td>{{ p.reference or '—' }}</td>
+                                <td class="muted">{{ p.recorded_by or '—' }}</td>
+                                <td>
+                                    {% if p.status == 'pending' %}
+                                    <span class="badge badge-pending">pending</span>
+                                    {% else %}
+                                    <span class="badge badge-verified">confirmed</span>
+                                    {% endif %}
+                                </td>
+                                <td class="row-actions">
+                                    {% if p.status == 'pending' %}
+                                    <form method="POST"
+                                        action="{{ url_for('admin.confirm_payment', application_id=application.id, payment_id=p.id) }}">
+                                        <button class="btn-view" type="submit">Confirm</button>
+                                    </form>
+                                    {% else %}
+                                    <form method="POST"
+                                        action="{{ url_for('admin.confirm_payment', application_id=application.id, payment_id=p.id) }}">
+                                        <input type="hidden" name="action" value="void">
+                                        <button class="btn-ghost btn-sm" type="submit"
+                                            title="Mistake? Put the payment back to pending without deleting the record.">Undo
+                                            confirm</button>
+                                    </form>
+                                    {% endif %}
+                                    <form method="POST"
+                                        action="{{ url_for('admin.delete_payment', application_id=application.id, payment_id=p.id) }}"
+                                        onsubmit="return confirm('Remove this payment entry?');">
+                                        <button class="btn-danger btn-sm" type="submit">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="muted">No payments recorded yet.</p>
+                {% endif %}
+
+                <h3 class="subhead">Record a payment</h3>
+                <form method="POST" action="{{ url_for('admin.record_payment', application_id=application.id) }}"
+                    class="stack-form">
+                    <div class="form-inline">
+                        <div class="form-group">
+                            <label>Amount (KES) *</label>
+                            <input name="amount" type="number" min="1" step="0.01" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Category</label>
+                            <select name="category">
+                                <option>Tuition</option>
+                                <option>Exam</option>
+                                <option>Other</option>
+                                <option>Registration</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>{{ period_word(terms) }}</label>
+                            <select name="term">
+                                <option value="">—</option>
+                                {% for t in terms %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Method</label>
+                            <input name="method" maxlength="40" placeholder="Cash / M-Pesa">
+                        </div>
+                        <div class="form-group">
+                            <label>Reference</label>
+                            <input name="reference" maxlength="60" placeholder="Receipt / M-Pesa code">
+                        </div>
+                    </div>
+                    <button class="btn-primary" type="submit">Record payment</button>
+                </form>
+            </div>
+        </section>
+    </main>
+</div>
+
+<!-- ============ Document preview lightbox ============ -->
+<div class="preview-lightbox" id="preview-lightbox" role="dialog" aria-modal="true" aria-label="Document preview">
+    <button class="preview-close" type="button" aria-label="Close preview">&times;</button>
+    <div class="preview-body" id="preview-body"></div>
+    <div class="preview-caption" id="preview-caption"></div>
+</div>
+
+<!-- ============ Page scripts ============ -->
+<script>
+    (() => {
+        /* ---------- Verify & Print ---------- */
+        const form = document.getElementById('verification-form');
+        const action = document.getElementById('status-action');
+        const verify = document.getElementById('btn-verify');
+
+        verify.addEventListener('click', () => {
+            action.value = 'verify_and_print';
+        });
+
+        form.querySelectorAll('button[type="submit"]').forEach(btn => {
+            if (btn === verify) return;
+            btn.addEventListener('click', () => { action.value = 'save'; });
+        });
+
+        /* ---------- Document preview lightbox ---------- */
+        const lightbox = document.getElementById('preview-lightbox');
+        const body = document.getElementById('preview-body');
+        const caption = document.getElementById('preview-caption');
+        const closeBtn = lightbox.querySelector('.preview-close');
+
+        const openPreview = (url, name, mime) => {
+            body.innerHTML = '';
+            const lower = (name || '').toLowerCase();
+
+            if ((mime && mime.startsWith('image/')) || /\.(jpg|jpeg|png|gif|webp)$/.test(lower)) {
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = name;
+                body.appendChild(img);
+            } else if (mime === 'application/pdf' || lower.endsWith('.pdf')) {
+                const iframe = document.createElement('iframe');
+                iframe.src = url;
+                iframe.title = name;
+                body.appendChild(iframe);
+            } else {
+                body.innerHTML = `<p style="color:#fff">Preview not available.
+                <a style="color:#d8ae67" href="${url}" download>Download file</a></p>`;
+            }
+
+            caption.textContent = name || '';
+            lightbox.classList.add('open');
+            document.body.style.overflow = 'hidden';
+        };
+
+        const closePreview = () => {
+            lightbox.classList.remove('open');
+            body.innerHTML = '';
+            document.body.style.overflow = '';
+        };
+
+        document.querySelectorAll('.doc-preview-trigger').forEach(el => {
+            el.addEventListener('click', (e) => {
+                e.preventDefault();
+                openPreview(
+                    el.dataset.previewUrl,
+                    el.dataset.previewName,
+                    el.dataset.previewMime
+                );
+            });
+        });
+
+        closeBtn.addEventListener('click', closePreview);
+        lightbox.addEventListener('click', (e) => { if (e.target === lightbox) closePreview(); });
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && lightbox.classList.contains('open')) closePreview();
+        });
+    })();
+</script>
+{% endblock %}

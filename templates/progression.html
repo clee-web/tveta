@@ -1,0 +1,280 @@
+{% extends "base.html" %}
+{% from "_shell/_icons.html" import svg %}
+{% block title %}Continuations — AMUAA Admin{% endblock %}
+
+{% set nav_active = 'progression' %}
+{% set page_title = 'Continuations' %}
+{% set page_subtitle = 'Students asking to move to their next period, or to be signed off' %}
+
+{% macro ladder(evidence, finished=false) %}
+<ol class="ladder" aria-label="Course progress">
+    {% for period in evidence.ladder %}
+    <li class="lad {% if finished or (evidence.period_index and loop.index < evidence.period_index) %}done
+        {% elif period == evidence.period %}now{% endif %}">
+        {{ period }}
+    </li>
+    {% endfor %}
+</ol>
+{% endmacro %}
+
+{% macro evidence_grid(evidence) %}
+<div class="evidence">
+    <div class="ev {% if evidence.term_fees.outstanding > 0 %}ev-warn{% else %}ev-ok{% endif %}">
+        <span class="ev-label">{{ evidence.period }} bill</span>
+        <span class="ev-value">KES {{ '{:,.0f}'.format(evidence.term_fees.billed) }}</span>
+        {% if not evidence.term_fees.priced %}
+        <span class="ev-note">No fee structure set for this period</span>
+        {% elif evidence.term_fees.outstanding > 0 %}
+        <span class="ev-note">
+            KES {{ '{:,.0f}'.format(evidence.term_fees.paid) }} paid against it
+        </span>
+        {% else %}
+        <span class="ev-note">Cleared</span>
+        {% endif %}
+    </div>
+
+    <div class="ev {% if evidence.balance > 0 %}ev-warn{% else %}ev-ok{% endif %}">
+        <span class="ev-label">Overall balance</span>
+        <span class="ev-value">KES {{ '{:,.0f}'.format(evidence.balance) if evidence.balance > 0 else '0' }}</span>
+        {% if evidence.balance > 0 %}
+        <span class="ev-note">
+            of KES {{ '{:,.0f}'.format(evidence.total_due) }} due,
+            KES {{ '{:,.0f}'.format(evidence.paid) }} confirmed
+        </span>
+        {% else %}
+        <span class="ev-note">
+            Every bill is paid
+            {%- if evidence.balance < 0 %} · KES {{ '{:,.0f}'.format(-evidence.balance) }} held as credit{% endif %}
+        </span>
+        {% endif %}
+    </div>
+
+    <div class="ev {% if evidence.results.average is not none and evidence.results.average < 50 %}ev-warn{% endif %}">
+        <span class="ev-label">{{ evidence.period }} results</span>
+        <span class="ev-value">
+            {% if evidence.results.average is not none %}{{ evidence.results.average }}%{% else %}—{% endif %}
+        </span>
+        <span class="ev-note">
+            {% if not evidence.results.class %}
+            Not assigned to a class
+            {% elif not evidence.results.rows %}
+            No exams recorded
+            {% else %}
+            {{ evidence.results.rows | length }} exam(s)
+            {%- if evidence.results.ungraded %}, {{ evidence.results.ungraded }} unmarked{% endif %}
+            {%- if evidence.results.untagged %}, {{ evidence.results.untagged }} not tagged to a period{% endif %}
+            {% endif %}
+        </span>
+    </div>
+
+    <div class="ev {% if evidence.attendance is not none and evidence.attendance < 75 %}ev-warn{% endif %}">
+        <span class="ev-label">Attendance</span>
+        <span class="ev-value">
+            {% if evidence.attendance is not none %}{{ evidence.attendance }}%{% else %}—{% endif %}
+        </span>
+        <span class="ev-note">{% if evidence.attendance is none %}Nothing recorded yet{% endif %}</span>
+    </div>
+</div>
+
+{% if evidence.advice[1] %}
+<ul class="advice">
+    {% for note in evidence.advice[1] %}<li>{{ note }}</li>{% endfor %}
+</ul>
+{% endif %}
+{% endmacro %}
+
+{% block content %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+
+            <nav class="segmented" aria-label="Filter requests">
+                <a class="seg seg-warn {% if tab == 'pending' %}active{% endif %}"
+                    href="{{ url_for('admin.progression', tab='pending') }}">
+                    <span class="seg-label">Waiting for a decision</span>
+                    <span class="seg-value">{{ counts.pending }}</span>
+                </a>
+                <a class="seg seg-brand {% if tab == 'decided' %}active{% endif %}"
+                    href="{{ url_for('admin.progression', tab='decided') }}">
+                    <span class="seg-label">Decided</span>
+                    <span class="seg-value">{{ counts.decided }}</span>
+                </a>
+                <span class="seg seg-static">
+                    <span class="seg-label">Deferred students</span>
+                    <span class="seg-value">{{ counts.deferred }}</span>
+                </span>
+                <span class="seg seg-static">
+                    <span class="seg-label">Repeating a period</span>
+                    <span class="seg-value">{{ counts.repeating }}</span>
+                </span>
+            </nav>
+
+            {% if tab == 'pending' %}
+            <div class="panel">
+                <div class="panel-head">
+                    <h2>File on behalf of a student</h2>
+                    <p>For students who phone in or come to the office instead of using the portal.</p>
+                </div>
+                <form class="form-inline" method="POST" action="{{ url_for('admin.file_progression') }}">
+                    <div class="form-group">
+                        <label for="adm">Admission number</label>
+                        <input id="adm" name="admission_number" required placeholder="AMUAA/ICT/2026/001">
+                    </div>
+                    <div class="form-group">
+                        <label for="kind">What they are asking for</label>
+                        <select id="kind" name="kind">
+                            <option value="advance">Continue to the next period</option>
+                            <option value="defer">Put studies on hold</option>
+                            <option value="complete">Sign off as finished</option>
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label for="reason">Reason given</label>
+                        <input id="reason" name="reason" maxlength="300"
+                            placeholder="Optional note for the file">
+                    </div>
+                    <div class="form-group form-group-btn">
+                        <label>&nbsp;</label>
+                        <button class="btn-secondary" type="submit">{{ svg('plus', 'ic-xs') }} Add to queue</button>
+                    </div>
+                </form>
+            </div>
+            {% endif %}
+
+            {% if not cards %}
+            <div class="empty-state">
+                <span class="empty-ic">{{ svg('check-circle') }}</span>
+                <h2>Nothing {{ 'waiting' if tab == 'pending' else 'decided' }} yet</h2>
+                <p class="empty-hint">
+                    {% if tab == 'pending' %}
+                    Continuation requests students send from the portal land here.
+                    {% else %}
+                    Decisions you record will be listed with the reasoning attached.
+                    {% endif %}
+                </p>
+            </div>
+            {% endif %}
+
+            {% for card in cards %}
+            <article class="panel prog-card">
+                <header class="prog-head">
+                    <span class="avatar">{{ card.student.full_name[:1]|upper }}</span>
+                    <div class="prog-who">
+                        <a class="prog-name"
+                            href="{{ url_for('admin.student_profile', application_id=card.student.id) }}">
+                            {{ card.student.full_name }}
+                        </a>
+                        <span class="prog-meta">
+                            {{ card.student.admission_number }} · {{ card.student.course }}
+                            · {{ card.student.study_mode }} · {{ card.student.academic_year }}
+                        </span>
+                    </div>
+                    {% set ask = {
+                        'advance': ('info', 'Wants to continue'),
+                        'defer': ('warn', 'Wants to pause'),
+                        'complete': ('ok', 'Finished the programme'),
+                    }.get(card.request.kind, ('info', 'Has a request')) %}
+                    <span class="chip chip-{{ ask[0] }}">{{ ask[1] }}</span>
+                    <span class="prog-when">
+                        {{ svg('clock', 'ic-xs') }}
+                        {{ card.request.requested_at[:10] }} ·
+                        {{ 'student' if card.request.requested_by == 'student' else 'filed by staff' }}
+                    </span>
+                </header>
+
+                {{ ladder(card.evidence, card.student.student_status == 'graduated') }}
+
+                {% if card.request.reason %}
+                <p class="prog-reason">“{{ card.request.reason }}”</p>
+                {% endif %}
+
+                {{ evidence_grid(card.evidence) }}
+
+                {% if card.request.status == 'pending' %}
+                <form class="decide" method="POST"
+                    action="{{ url_for('admin.decide_progression', request_id=card.request.id) }}">
+                    <div class="decide-fields">
+                        <div class="form-group">
+                            <label for="nc-{{ card.request.id }}">Course — only for a transfer</label>
+                            <select id="nc-{{ card.request.id }}" name="new_course">
+                                <option value="">No change</option>
+                                {% for c in courses %}
+                                <option value="{{ c.name }}">{{ c.name }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="rp-{{ card.request.id }}">Back on campus — only for a pause</label>
+                            <input id="rp-{{ card.request.id }}" name="return_period" maxlength="40"
+                                placeholder="e.g. Term 1, January 2027">
+                        </div>
+                        <div class="form-group">
+                            <label for="nt-{{ card.request.id }}">Notes on the file</label>
+                            <input id="nt-{{ card.request.id }}" name="notes" maxlength="400"
+                                placeholder="Why you decided this">
+                        </div>
+                    </div>
+
+                    <div class="decision-bar">
+                        {% if card.request.kind == 'advance' and card.evidence.next %}
+                        <button class="btn-primary btn-sm" type="submit" name="decision" value="advance">
+                            {{ svg('check', 'ic-xs') }} Approve — move to {{ card.evidence.next }}
+                        </button>
+                        {% endif %}
+                        <button class="btn-secondary btn-sm" type="submit" name="decision" value="repeat"
+                            title="The student sits {{ card.evidence.period }} again">
+                            {{ svg('trend', 'ic-xs') }} Repeat {{ card.evidence.period }}
+                        </button>
+                        <button class="btn-secondary btn-sm" type="submit" name="decision" value="change_course">
+                            {{ svg('arrow-right', 'ic-xs') }} Transfer course
+                        </button>
+                        <button class="btn-secondary btn-sm" type="submit" name="decision" value="defer">
+                            {{ svg('clock', 'ic-xs') }} Defer studies
+                        </button>
+                        {% if card.evidence.is_last or card.request.kind == 'complete' %}
+                        <button class="btn-primary btn-sm" type="submit" name="decision" value="complete">
+                            {{ svg('cap', 'ic-xs') }} Mark programme complete
+                        </button>
+                        {% endif %}
+                        <button class="btn-danger btn-sm" type="submit" name="decision" value="rejected">
+                            {{ svg('close', 'ic-xs') }} Decline
+                        </button>
+                    </div>
+                </form>
+
+                {% else %}
+                <div class="decided-bar">
+                    <span class="chip chip-{{ 'ok' if card.request.decision in ('advance', 'complete') else 'warn' }}">
+                        {{ {
+                            'advance': 'Approved to continue',
+                            'repeat': 'Asked to repeat the period',
+                            'change_course': 'Transferred to another course',
+                            'defer': 'Studies deferred',
+                            'complete': 'Programme complete',
+                            'rejected': 'Request declined',
+                        }[card.request.decision] or card.request.decision }}
+                    </span>
+                    {% if card.request.to_period and card.request.decision != 'change_course' %}
+                    <span class="decided-to">→ {{ card.request.to_period }}</span>
+                    {% endif %}
+                    {% if card.request.new_course %}<span class="decided-to">→ {{ card.request.new_course }}</span>{% endif %}
+                    {% if card.request.return_period %}<span class="decided-to">back {{ card.request.return_period }}</span>{% endif %}
+                    <span class="decided-by">
+                        {{ card.request.decided_by }} · {{ (card.request.decided_at or '')[:10] }}
+                    </span>
+                    {% if card.request.decision_notes %}
+                    <p class="decided-note">{{ card.request.decision_notes }}</p>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </article>
+            {% endfor %}
+
+        </section>
+    </main>
+</div>
+{% endblock %}

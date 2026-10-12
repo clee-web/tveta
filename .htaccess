@@ -1,0 +1,8 @@
+# Safety net for the case where the app folder is placed inside public_html.
+# The recommended layout keeps the app outside the web root, but if it is not,
+# no source file, database or log may be fetched as a plain download.
+Options -Indexes
+
+<FilesMatch "\.(py|pyc|db|db-wal|db-shm|sqlite|sqlite3|log|ini|env|bak|txt)$">
+    Require all denied
+</FilesMatch>

@@ -1,0 +1,66 @@
+{#- Shared admin topbar. Set `page_title`, optional `page_subtitle`,
+    optional `pending_payments` (renders the alert dropdown), and assign
+    `topbar_actions` to a macro to add buttons on the right. -#}
+{% from "_shell/_icons.html" import svg %}
+{% set topbar_actions = topbar_actions | default(none) %}
+<header class="topbar">
+    <div class="topbar-left">
+        <button type="button" class="icon-btn only-mobile" data-open-sidebar aria-label="Open menu">
+            {{ svg('menu') }}
+        </button>
+        <div class="topbar-heading">
+            <h1>{{ page_title }}</h1>
+            {% if page_subtitle %}<p>{{ page_subtitle }}</p>{% endif %}
+        </div>
+    </div>
+
+    <div class="topbar-right">
+        {% if topbar_actions %}{{ topbar_actions() }}{% endif %}
+
+        {% if pending_payments %}
+        <div class="bell-wrap" data-bell>
+            <button type="button" class="icon-btn bell-btn" data-bell-toggle aria-expanded="false"
+                aria-label="{{ pending_payments|length }} pending payment alerts">
+                {{ svg('bell') }}
+                <span class="bell-dot">{{ pending_payments|length }}</span>
+            </button>
+            <div class="dropdown bell-panel" role="dialog" aria-label="Payment alerts">
+                <div class="dropdown-head">
+                    <strong>{{ pending_payments|length }} payment{{ '' if pending_payments|length == 1 else 's' }}
+                        awaiting confirmation</strong>
+                    <span class="chip chip-warn">KES {{ '{:,.0f}'.format(pending_payments|sum(attribute='amount')) }}</span>
+                </div>
+                <ul class="dropdown-list">
+                    {% for p in pending_payments %}
+                    <li>
+                        <a class="dropdown-item"
+                            href="{{ url_for('admin.application_detail', application_id=p.application_id) }}">
+                            <span class="dd-main">
+                                <strong>{{ p.full_name }}</strong>
+                                <small>{{ p.admission_number or p.application_id[:8]|upper }} ·
+                                    {{ p.category }}{% if p.term %} · {{ p.term }}{% endif %}</small>
+                            </span>
+                            <span class="dd-amount">KES {{ '{:,.0f}'.format(p.amount) }}</span>
+                        </a>
+                        <form method="POST" class="dd-confirm"
+                            action="{{ url_for('admin.confirm_payment', application_id=p.application_id, payment_id=p.id) }}">
+                            <input type="hidden" name="next" value="{{ request.url }}">
+                            <button type="submit" class="btn-ghost btn-xs" title="Confirm this payment">
+                                {{ svg('check') }} Confirm
+                            </button>
+                        </form>
+                    </li>
+                    {% endfor %}
+                </ul>
+                <a class="dropdown-foot" href="{{ url_for('admin.fees') }}">
+                    Open fees &amp; balances {{ svg('arrow-right', 'ic-xs') }}
+                </a>
+            </div>
+        </div>
+        {% endif %}
+
+        <button type="button" class="icon-btn" id="themeToggle" aria-label="Switch colour theme">
+            {{ svg('moon', 'theme-moon') }}{{ svg('sun', 'theme-sun') }}
+        </button>
+    </div>
+</header>

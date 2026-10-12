@@ -1,0 +1,335 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>Application — {{ application.full_name }}</title>
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: "Georgia", "Times New Roman", serif;
+            color: #111;
+            margin: 0;
+            padding: 40px 50px;
+            background: #fff;
+        }
+
+        /* ---------- Header ---------- */
+        .header {
+            border-bottom: 3px double #6f1730;
+            padding-bottom: 16px;
+            margin-bottom: 26px;
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+        }
+
+        .header h1 {
+            font-size: 22px;
+            margin: 0 0 4px;
+        }
+
+        .header p {
+            margin: 0;
+            font-size: 12px;
+            color: #444;
+        }
+
+        .ref-box {
+            text-align: right;
+            font-size: 12px;
+        }
+
+        .ref-box strong {
+            font-size: 16px;
+            display: block;
+        }
+
+        /* ---------- Section titles ---------- */
+        h2 {
+            font-size: 13px;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            color: #6f1730;
+            margin: 26px 0 10px;
+            border-bottom: 1px solid #ddd;
+            padding-bottom: 5px;
+        }
+
+        /* ---------- Tables ---------- */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+
+        table td {
+            padding: 8px 10px;
+            border: 1px solid #ccc;
+            vertical-align: top;
+        }
+
+        table td.label {
+            background: #f6f1e7;
+            width: 200px;
+            font-weight: bold;
+            color: #444;
+        }
+
+        /* ---------- Passport photo box ---------- */
+        .photo-box {
+            width: 130px;
+            height: 160px;
+            border: 1px dashed #999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 11px;
+            color: #777;
+            text-align: center;
+            float: right;
+            margin-left: 20px;
+        }
+
+        /* ---------- Signatures ---------- */
+        .signatures {
+            margin-top: 70px;
+            display: flex;
+            justify-content: space-between;
+            gap: 40px;
+        }
+
+        .sig-line {
+            flex: 1;
+            border-top: 1px solid #333;
+            padding-top: 6px;
+            font-size: 11px;
+            color: #333;
+        }
+
+        /* ---------- Status stamp ---------- */
+        .status-stamp {
+            display: inline-block;
+            padding: 6px 14px;
+            border: 2px solid #6f1730;
+            color: #6f1730;
+            font-weight: bold;
+            font-size: 13px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transform: rotate(-3deg);
+        }
+
+        .footer-note {
+            margin-top: 40px;
+            font-size: 10px;
+            color: #666;
+            text-align: center;
+            border-top: 1px solid #ddd;
+            padding-top: 12px;
+        }
+
+        /* ---------- Print toolbar ---------- */
+        .print-toolbar {
+            text-align: right;
+            margin-bottom: 12px;
+        }
+
+        .print-toolbar button,
+        .print-toolbar a {
+            padding: 8px 16px;
+            background: #6f1730;
+            color: #fff;
+            border: 0;
+            cursor: pointer;
+            font-size: 13px;
+            text-decoration: none;
+            margin-left: 8px;
+        }
+
+        .print-toolbar a {
+            background: #fff;
+            color: #6f1730;
+            border: 1px solid #6f1730;
+        }
+
+        /* ---------- Print view ---------- */
+        @media print {
+            .print-toolbar {
+                display: none;
+            }
+
+            body {
+                padding: 0;
+            }
+
+            @page {
+                margin: 15mm;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="print-toolbar">
+        <a href="{{ url_for('admin.application_detail', application_id=application.id) }}">← Back</a>
+        <button onclick="window.print()">🖨 Print / Save as PDF</button>
+    </div>
+
+    <div class="header">
+        <div style="display:flex;align-items:center;gap:12px">
+            <img src="{{ url_for('public.assets', filename='AMUAA-IPS-LOGO-2026.png') }}" alt="AMUAA logo" style="width:84px;height:50px;object-fit:contain">
+            <div>
+                <h1>AMUAA Institute of Professional Studies</h1>
+                <p>Riat Market, opposite Kisumu International Airport · Kisumu, Kenya</p>
+                <p>Tel: 0722 797 244 · Email: info@amuaaips.co.ke · www.amuaaips.co.ke</p>
+            </div>
+        </div>
+        <div class="ref-box">
+            <span>Application Ref</span>
+            <strong>{{ application.id[:8]|upper }}</strong>
+            <span>{{ application.created_at[:10] }}</span>
+        </div>
+    </div>
+
+    <h2>Student Application Form</h2>
+
+    <div class="photo-box">Passport<br>photo</div>
+
+    <table>
+        <tr>
+            <td class="label">Full name</td>
+            <td>{{ application.full_name }}</td>
+        </tr>
+        <tr>
+            <td class="label">Surname / First / Middle</td>
+            <td>{{ application.surname or '—' }} / {{ application.first_name or '—' }} / {{ application.middle_name or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Mobile number</td>
+            <td>{{ application.phone }}</td>
+        </tr>
+        <tr>
+            <td class="label">Email address</td>
+            <td>{{ application.email }}</td>
+        </tr>
+        <tr>
+            <td class="label">Nationality</td>
+            <td>{{ application.nationality or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Date of birth</td>
+            <td>{{ application.date_of_birth or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Medical condition</td>
+            <td>{{ application.medical_condition or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Course applied for</td>
+            <td>{{ application.course }}</td>
+        </tr>
+        <tr>
+            <td class="label">Preferred study option</td>
+            <td>{{ application.study_mode }}</td>
+        </tr>
+        <tr>
+            <td class="label">Starting date</td>
+            <td>{{ application.start_date or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">End date</td>
+            <td>{{ application.end_date or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Next of kin</td>
+            <td>{{ application.next_of_kin_name or '—' }}{% if application.next_of_kin_relationship %} ({{ application.next_of_kin_relationship }}){% endif %}</td>
+        </tr>
+        <tr>
+            <td class="label">Sponsor - person's name</td>
+            <td>{{ application.sponsor_name or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Sponsor - organisation</td>
+            <td>{{ application.sponsor_organisation or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Sponsor - contact person</td>
+            <td>{{ application.sponsor_contact_person or '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Previous education</td>
+            <td>{{ application.previous_education or '—' }}</td>
+        </tr>
+    </table>
+
+    <h2>Documents submitted</h2>
+    <table>
+        <tr>
+            <td class="label">Passport-size photo</td>
+            <td>☐ Attached &amp; verified &nbsp;&nbsp; ☐ Attached (pending verification)</td>
+        </tr>
+        <tr>
+            <td class="label">National ID / Passport</td>
+            <td>☐ Attached &amp; verified &nbsp;&nbsp; ☐ Attached (pending verification)</td>
+        </tr>
+        <tr>
+            <td class="label">Academic certificates / result slips</td>
+            <td>☐ Attached &amp; verified &nbsp;&nbsp; ☐ Attached (pending verification)</td>
+        </tr>
+        <tr>
+            <td class="label">CV</td>
+            <td>☐ Attached &nbsp;&nbsp; ☐ Not provided</td>
+        </tr>
+    </table>
+
+    <h2>Admissions decision</h2>
+    <table>
+        <tr>
+            <td class="label">Status</td>
+            <td><span class="status-stamp">{{ application.status }}</span></td>
+        </tr>
+        <tr>
+            <td class="label">Received by</td>
+            <td>______________________________________</td>
+        </tr>
+        <tr>
+            <td class="label">Date received</td>
+            <td>____ / ____ / ________</td>
+        </tr>
+    </table>
+
+    {% if application.notes %}
+    <h2>Admin notes</h2>
+    <table>
+        <tr>
+            <td>{{ application.notes }}</td>
+        </tr>
+    </table>
+    {% endif %}
+
+    <div class="signatures">
+        <div class="sig-line">Applicant signature &amp; date</div>
+        <div class="sig-line">Admissions officer signature &amp; date</div>
+        <div class="sig-line">Registrar / Principal signature &amp; stamp</div>
+    </div>
+
+    <div class="footer-note">
+        This form was generated from the AMUAA online application system on
+        {{ application.created_at[:19].replace('T',' ') }}. Keep this copy for your records.
+    </div>
+
+    <script>
+        {% if auto_print %}
+        window.addEventListener('load', () => {
+            setTimeout(() => window.print(), 250);
+        });
+        {% endif %}
+    </script>
+</body>
+
+</html>

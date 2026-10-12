@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% from "_shell/_icons.html" import svg %}
+{% block title %}My Fees — AMUAA Student Portal{% endblock %}
+
+{% block content %}
+<div class="layout">
+    <aside class="sidebar">
+        <div class="brand">AMUAA Portal</div>
+        <nav>
+            <a href="{{ url_for('student.dashboard') }}" class="active">{{ svg('wallet') }}<span>My fees</span></a>
+            <a href="{{ url_for('student.exams') }}">{{ svg('edit') }}<span>My exams</span></a>
+            <a href="{{ url_for('student.continuation') }}">{{ svg('cap') }}<span>Continuation</span></a>
+            <a href="{{ url_for('student.qr') }}">{{ svg('qr') }}<span>My QR code</span></a>
+            <a href="{{ url_for('public.index') }}" target="_blank">{{ svg('globe') }}<span>Public site</span></a>
+        </nav>
+        <a href="{{ url_for('student.logout') }}" class="logout-btn">Logout</a>
+    </aside>
+
+    <main class="main" id="main-content" tabindex="-1">
+        <header class="topbar">
+            <h1>My Fees</h1>
+            <span class="user-badge">👤 {{ student.full_name }}</span>
+        </header>
+
+        <section class="content">
+            <div class="stat-row">
+                <div class="stat">
+                    <span class="stat-label">Total due</span>
+                    <span class="stat-value">KES {{ '{:,.0f}'.format(info.total_due) }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Paid</span>
+                    <span class="stat-value">KES {{ '{:,.0f}'.format(info.paid) }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Balance</span>
+                    <span class="stat-value">KES {{ '{:,.0f}'.format(info.balance) }}</span>
+                </div>
+                <div class="stat">
+                    <span class="stat-label">Pending confirmation</span>
+                    <span class="stat-value">KES {{ '{:,.0f}'.format(info.pending) }}</span>
+                </div>
+            </div>
+            {% if info.pending %}
+            <p class="balance-note">
+                The balance only counts money the accounts office has already confirmed.
+                You have KES {{ '{:,.0f}'.format(info.pending) }} still waiting to be confirmed —
+                please do not pay it again.
+            </p>
+            {% endif %}
+
+            <div class="detail-grid">
+                <!-- Student details -->
+                <div class="card">
+                    <h2>My details</h2>
+                    <dl class="detail-list">
+                        <dt>Admission No</dt>
+                        <dd><code>{{ student.admission_number }}</code></dd>
+                        <dt>Full name</dt>
+                        <dd>{{ student.full_name }}</dd>
+                        <dt>Course</dt>
+                        <dd>{{ student.course }}</dd>
+                        <dt>Study option</dt>
+                        <dd>{{ student.study_mode }}</dd>
+                        <dt>Academic year</dt>
+                        <dd>{{ student.academic_year or '—' }}</dd>
+                    </dl>
+                </div>
+
+                <!-- Fee breakdown -->
+                <div class="card">
+                    <h2>{{ info.academic_year }} fee breakdown</h2>
+                    {% if info.structures %}
+                    <div class="table-wrap">
+                        <table class="app-table">
+                            <thead>
+                                <tr>
+                                    <th>{{ period_word(terms) }}</th>
+                                    <th>Tuition</th>
+                                    <th>Exam</th>
+                                    <th>Other</th>
+                                    <th>Total</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for s in info.structures %}
+                                <tr>
+                                    <td>{{ s.term }}</td>
+                                    <td>{{ '{:,.0f}'.format(s.tuition_fee or 0) }}</td>
+                                    <td>{{ '{:,.0f}'.format(s.exam_fee or 0) }}</td>
+                                    <td>{{ '{:,.0f}'.format(s.other_fee or 0) }}</td>
+                                    <td>{{ '{:,.0f}'.format((s.tuition_fee or 0) + (s.exam_fee or 0) + (s.other_fee or 0)) }}</td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% set other_lines = [] %}
+                    {% for s in info.structures %}{% for it in s.other_items %}{% set _ = other_lines.append(s.term ~ ' · ' ~ it.name ~ ' — KES ' ~ '{:,.0f}'.format(it.amount)) %}{% endfor %}{% endfor %}
+                    {% if other_lines %}
+                    <div class="other-items-view">
+                        {% for line in other_lines %}<span class="other-chip">{{ line }}</span>{% endfor %}
+                    </div>
+                    {% endif %}
+                    <p class="muted" style="margin-top:12px">
+                        Registration fee KES {{ '{:,.0f}'.format(info.registration) }} ·
+                        Tuition KES {{ '{:,.0f}'.format(info.tuition) }} ·
+                        Exam KES {{ '{:,.0f}'.format(info.exam) }} ·
+                        Other KES {{ '{:,.0f}'.format(info.other) }}
+                    </p>
+                    {% else %}
+                    <p class="muted">No fee structure has been published for your course and year yet.</p>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Payment history -->
+            <div class="section-gap card full-width">
+                <h2>Payment history</h2>
+                {% if info.payments %}
+                <div class="table-wrap">
+                    <table class="app-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Category</th>
+                                <th>{{ period_word(terms) }}</th>
+                                <th>Amount</th>
+                                <th>Method</th>
+                                <th>Reference</th>
+                                <th>Status</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for p in info.payments %}
+                            <tr>
+                                <td class="muted">{{ p.paid_at[:16].replace('T',' ') }}</td>
+                                <td>{{ p.category }}</td>
+                                <td>{{ p.term or '—' }}</td>
+                                <td>KES {{ '{:,.0f}'.format(p.amount) }}</td>
+                                <td>{{ p.method or '—' }}</td>
+                                <td>{{ p.reference or '—' }}</td>
+                                <td>
+                                    {% if p.status == 'pending' %}
+                                    <span class="badge badge-pending">pending</span>
+                                    {% else %}
+                                    <span class="badge badge-verified">confirmed</span>
+                                    {% endif %}
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                {% else %}
+                <p class="muted">No payments recorded yet.</p>
+                {% endif %}
+            </div>
+
+            <div class="card full-width section-gap">
+                <h2>Attendance</h2>
+                {% if attendance and attendance.total %}
+                <div class="stat-row stat-row-narrow">
+                    <div class="stat">
+                        <span class="stat-label">Present</span>
+                        <span class="stat-value">{{ attendance.present }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Absent</span>
+                        <span class="stat-value">{{ attendance.absent }}</span>
+                    </div>
+                    <div class="stat">
+                        <span class="stat-label">Attendance rate</span>
+                        <span class="stat-value">{{ attendance.rate }}%</span>
+                    </div>
+                </div>
+                <p class="muted card-gap">The last {{ attendance.marks | length }} register day(s) your
+                    teacher marked in {{ cls.name }}.</p>
+                <ul class="attendance-list">
+                    {% for m in attendance.marks[:8] %}
+                    <li>
+                        <span class="muted">{{ m.attend_date }}</span>
+                        <span class="status-pill {% if m.status == 'present' %}status-present{% else %}status-absent{% endif %}">
+                            {{ m.status }}
+                        </span>
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% elif cls %}
+                <p class="muted">Your teacher has not marked a register for {{ cls.name }} yet.</p>
+                {% else %}
+                <p class="muted">You are not assigned to a class yet, so there is no register to show.</p>
+                {% endif %}
+            </div>
+
+            <div class="detail-grid section-gap">
+                <!-- Notify payment -->
+                <div class="card">
+                    <h2>Notify a payment</h2>
+                    <p class="muted" style="margin-bottom:14px">
+                        Paid via M-Pesa or at the bank? Enter the details here. The accounts office will confirm and
+                        update your balance.
+                    </p>
+                    <form method="POST" action="{{ url_for('student.declare_payment') }}" class="stack-form">
+                        <div class="form-group">
+                            <label for="pay-amount">Amount (KES) *</label>
+                            <input id="pay-amount" name="amount" type="number" min="1" step="0.01" required
+                                inputmode="decimal" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="pay-category">Category</label>
+                            <select id="pay-category" name="category">
+                                <option>Tuition</option>
+                                <option>Exam</option>
+                                <option>Other</option>
+                                <option>Registration</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pay-term">{{ period_word(terms) }}</label>
+                            <select id="pay-term" name="term">
+                                <option value="">—</option>
+                                {% for t in terms %}<option value="{{ t }}">{{ t }}</option>{% endfor %}
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="pay-method">Method</label>
+                            <input id="pay-method" name="method" maxlength="40"
+                                placeholder="M-Pesa / Bank / Cash" autocomplete="off">
+                        </div>
+                        <div class="form-group">
+                            <label for="pay-reference">Reference</label>
+                            <input id="pay-reference" name="reference" maxlength="60"
+                                placeholder="M-Pesa code / receipt no." autocomplete="off">
+                        </div>
+                        <button class="btn-primary" type="submit">Submit payment notification</button>
+                    </form>
+                </div>
+
+                <!-- Change password -->
+                <div class="card">
+                    <h2>Change password</h2>
+                    <form method="POST" action="{{ url_for('student.change_password') }}" class="stack-form">
+                        <div class="form-group">
+                            <label for="cp-current">Current password</label>
+                            <input id="cp-current" name="current_password" type="password" required
+                                autocomplete="current-password">
+                        </div>
+                        <div class="form-group">
+                            <label for="cp-new">New password</label>
+                            <input id="cp-new" name="new_password" type="password" minlength="8" required
+                                autocomplete="new-password">
+                            <span class="field-hint">At least 8 characters.</span>
+                        </div>
+                        <div class="form-group">
+                            <label for="cp-confirm">Confirm new password</label>
+                            <input id="cp-confirm" name="confirm_password" type="password" minlength="8" required
+                                autocomplete="new-password">
+                        </div>
+                        <button class="btn-primary" type="submit">Update password</button>
+                    </form>
+                </div>
+            </div>
+        </section>
+    </main>
+</div>
+{% endblock %}

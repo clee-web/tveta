@@ -1,0 +1,87 @@
+{#- Shared admin sidebar. Set `nav_active` before including. -#}
+{% from "_shell/_icons.html" import svg %}
+<aside class="sidebar" id="sidebar">
+    <div class="sidebar-top">
+        <a class="brand" href="{{ url_for('admin.dashboard') }}">
+            <img src="{{ url_for('public.assets', filename='AMUAA-IPS-LOGO-2026.png') }}" alt="" class="brand-logo">
+            <span class="brand-text">
+                <strong>AMUAA</strong>
+                <small>Admissions Panel</small>
+            </span>
+        </a>
+        <button type="button" class="sidebar-close" data-close-sidebar aria-label="Close menu">
+            {{ svg('close') }}
+        </button>
+    </div>
+
+    <nav class="sidebar-nav" aria-label="Main">
+        <div class="nav-group">
+            <span class="nav-group-label">Overview</span>
+            <a href="{{ url_for('admin.dashboard') }}"
+                class="nav-link {% if nav_active == 'overview' %}active{% endif %}">
+                {{ svg('gauge') }}<span>Dashboard</span>
+            </a>
+        </div>
+
+        <div class="nav-group">
+            <span class="nav-group-label">Admissions</span>
+            <a href="{{ url_for('admin.applications') }}"
+                class="nav-link {% if nav_active == 'applications' %}active{% endif %}">
+                {{ svg('inbox') }}<span>Applications</span>
+            </a>
+            <a href="{{ url_for('admin.students_list') }}"
+                class="nav-link {% if nav_active == 'students' %}active{% endif %}">
+                {{ svg('users') }}<span>Students</span>
+            </a>
+            <a href="{{ url_for('admin.progression') }}"
+                class="nav-link {% if nav_active == 'progression' %}active{% endif %}">
+                {{ svg('trend') }}<span>Continuations</span>
+                {% if progression_pending_count %}<span class="nav-badge">{{ progression_pending_count }}</span>{% endif %}
+            </a>
+        </div>
+
+        <div class="nav-group">
+            <span class="nav-group-label">Academics</span>
+            <a href="{{ url_for('admin.academics') }}"
+                class="nav-link {% if nav_active == 'academics' %}active{% endif %}">
+                {{ svg('book') }}<span>Departments &amp; Courses</span>
+            </a>
+            <a href="{{ url_for('admin.classes') }}"
+                class="nav-link {% if nav_active == 'classes' %}active{% endif %}">
+                {{ svg('building') }}<span>Classes</span>
+            </a>
+            <a href="{{ url_for('admin.teachers') }}"
+                class="nav-link {% if nav_active == 'teachers' %}active{% endif %}">
+                {{ svg('teacher') }}<span>Teachers</span>
+            </a>
+        </div>
+
+        <div class="nav-group">
+            <span class="nav-group-label">Finance</span>
+            <a href="{{ url_for('admin.fees') }}"
+                class="nav-link {% if nav_active == 'fees' %}active{% endif %}">
+                {{ svg('wallet') }}<span>Fees &amp; Payments</span>
+                {% if pending_payment_count %}<span class="nav-badge">{{ pending_payment_count }}</span>{% endif %}
+            </a>
+        </div>
+
+        <div class="nav-group">
+            <span class="nav-group-label">Shortcuts</span>
+            <a href="{{ url_for('public.index') }}" target="_blank" rel="noopener" class="nav-link">
+                {{ svg('globe') }}<span>Public site</span>{{ svg('arrow-right', 'ic-xs') }}
+            </a>
+        </div>
+    </nav>
+
+    <div class="sidebar-foot">
+        <div class="who-am-i">
+            <span class="avatar">{{ (session.admin_username or 'A')[:1]|upper }}</span>
+            <span class="who-meta">
+                <strong>{{ session.admin_username }}</strong>
+                <small>Administrator</small>
+            </span>
+        </div>
+        <a href="{{ url_for('admin.logout') }}" class="logout-btn">{{ svg('logout') }}<span>Logout</span></a>
+    </div>
+</aside>
+<div class="sidebar-scrim" data-close-sidebar></div>

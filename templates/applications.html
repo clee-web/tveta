@@ -1,0 +1,177 @@
+{% extends "base.html" %}
+{% from "_shell/_icons.html" import svg %}
+{% block title %}Applications — AMUAA Admin{% endblock %}
+
+{% block content %}
+<div class="layout">
+    {% include "_shell/_sidebar.html" %}
+
+    <main class="main" id="main-content" tabindex="-1">
+        {% include "_shell/_topbar.html" %}
+
+        <section class="content">
+
+            <!-- Status filter, doubling as headline counts -->
+            <nav class="segmented" aria-label="Filter by status">
+                {% set tabs = [
+                    ('all', 'All', counts.all, 'brand'),
+                    ('pending', 'Pending', counts.pending, 'warn'),
+                    ('verified', 'Verified', counts.verified, 'ok'),
+                    ('rejected', 'Rejected', counts.rejected, 'danger'),
+                ] %}
+                {% for key, label, value, tone in tabs %}
+                <a class="seg seg-{{ tone }} {% if status_filter == key %}active{% endif %}"
+                    href="{{ url_for('admin.applications', status=key, q=search or None) }}"
+                    aria-current="{{ 'true' if status_filter == key else 'false' }}">
+                    <span class="seg-label">{{ label }}</span>
+                    <span class="seg-value">{{ value }}</span>
+                </a>
+                {% endfor %}
+            </nav>
+
+            <div class="toolbar">
+                <form class="search-box" method="GET" action="{{ url_for('admin.applications') }}"
+                    data-autosubmit="600">
+                    <input type="hidden" name="status" value="{{ status_filter }}">
+                    <span class="search-ic">{{ svg('search') }}</span>
+                    <input type="search" name="q" value="{{ search }}"
+                        placeholder="Search name, email, reference or course" aria-label="Search applications">
+                    {% if search %}
+                    <a class="icon-btn icon-btn-sm" href="{{ url_for('admin.applications', status=status_filter) }}"
+                        aria-label="Clear search">{{ svg('close') }}</a>
+                    {% endif %}
+                </form>
+
+                <div class="toolbar-actions">
+                    <span class="toolbar-label">Export</span>
+                    <a class="btn-secondary btn-sm"
+                        href="{{ url_for('admin.export_csv', status=status_filter, q=search or None) }}">
+                        {{ svg('download', 'ic-xs') }} CSV
+                    </a>
+                    <a class="btn-secondary btn-sm"
+                        href="{{ url_for('admin.export_xlsx', status=status_filter, q=search or None) }}">
+                        {{ svg('download', 'ic-xs') }} Excel
+                    </a>
+                </div>
+            </div>
+
+            {% if applications %}
+            <div class="table-card">
+                <div class="table-scroll">
+                    <table class="data-table">
+                        <thead>
+                            <tr>
+                                <th scope="col">Reference</th>
+                                <th scope="col">Applicant</th>
+                                <th scope="col">Contact</th>
+                                <th scope="col">Course</th>
+                                <th scope="col">Mode</th>
+                                <th scope="col">Status</th>
+                                <th scope="col">Submitted</th>
+                                <th scope="col"><span class="sr-only">Actions</span></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for a in applications %}
+                            <tr data-href="{{ url_for('admin.application_detail', application_id=a.id,
+                                status=status_filter, q=search or None, page=page, per_page=per_page) }}">
+                                <td><code>{{ a.id[:8]|upper }}</code></td>
+                                <td class="cell-strong">
+                                    <span class="cell-person">
+                                        <span class="avatar avatar-sm">{{ a.full_name[:1]|upper }}</span>
+                                        <span>
+                                            <strong>{{ a.full_name }}</strong>
+                                            {% if a.admission_number %}
+                                            <small class="mono">{{ a.admission_number }}</small>
+                                            {% endif %}
+                                        </span>
+                                    </span>
+                                </td>
+                                <td>
+                                    <a class="cell-link" href="mailto:{{ a.email }}">{{ a.email }}</a>
+                                    <small class="cell-sub">{{ a.phone }}</small>
+                                </td>
+                                <td>{{ a.course }}</td>
+                                <td><span class="chip">{{ a.study_mode }}</span></td>
+                                <td><span class="badge badge-{{ a.status }}">{{ a.status }}</span></td>
+                                <td class="cell-nowrap">
+                                    {{ a.created_at[:10] }}<small class="cell-sub">{{ a.created_at[11:16] }}</small>
+                                </td>
+                                <td class="cell-nowrap cell-actions">
+                                    <a class="btn-secondary btn-xs"
+                                        href="{{ url_for('admin.application_detail', application_id=a.id,
+                                            status=status_filter, q=search or None, page=page, per_page=per_page) }}">
+                                        Open {{ svg('arrow-right', 'ic-xs') }}
+                                    </a>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                <div class="table-foot">
+                    <form method="GET" action="{{ url_for('admin.applications') }}" class="per-page">
+                        {% if search %}<input type="hidden" name="q" value="{{ search }}">{% endif %}
+                        <label for="perPage">Show</label>
+                        <select id="perPage" name="per_page" data-submit-on-change>
+                            {% for n in [10, 25, 50, 100] %}
+                            <option value="{{ n }}" {% if per_page == n %}selected{% endif %}>{{ n }}</option>
+                            {% endfor %}
+                        </select>
+                        <span class="muted">of {{ counts[status_filter] if status_filter != 'all' else counts.all }}
+                            filtered</span>
+                    </form>
+
+                    {% if pages > 1 %}
+                    <nav class="pager" aria-label="Pagination">
+                        <a class="page-btn {% if page <= 1 %}disabled{% endif %}"
+                            href="{{ url_for('admin.applications', status=status_filter, q=search or None, page=page-1, per_page=per_page) }}"
+                            aria-label="Previous page">{{ svg('arrow-left', 'ic-xs') }}</a>
+                        {% for p in range(1, pages + 1) %}
+                            {% if p == 1 or p == pages or (p >= page - 1 and p <= page + 1) %}
+                            <a class="page-btn {% if p == page %}active{% endif %}"
+                                href="{{ url_for('admin.applications', status=status_filter, q=search or None, page=p, per_page=per_page) }}">{{ p }}</a>
+                            {% elif p == page - 2 or p == page + 2 %}
+                            <span class="page-gap">…</span>
+                            {% endif %}
+                        {% endfor %}
+                        <a class="page-btn {% if page >= pages %}disabled{% endif %}"
+                            href="{{ url_for('admin.applications', status=status_filter, q=search or None, page=page+1, per_page=per_page) }}"
+                            aria-label="Next page">{{ svg('arrow-right', 'ic-xs') }}</a>
+                    </nav>
+                    {% endif %}
+                </div>
+            </div>
+            {% else %}
+            <div class="empty-state">
+                <span class="empty-ic">{{ svg('inbox') }}</span>
+                <h2>
+                    {% if search %}No applications match “{{ search }}”{% else %}No {{ status_filter }} applications{% endif %}
+                </h2>
+                <p>
+                    {% if search %}
+                    Try a different name, email or course — or widen the status filter above.
+                    {% elif status_filter != 'all' %}
+                    Switch to <a href="{{ url_for('admin.applications') }}">All</a> to see every applicant.
+                    {% else %}
+                    When students submit the form on your public site, their applications appear here.
+                    {% endif %}
+                </p>
+                <div class="empty-actions">
+                    {% if search %}
+                    <a class="btn-secondary btn-sm" href="{{ url_for('admin.applications', status=status_filter) }}">
+                        Clear search
+                    </a>
+                    {% endif %}
+                    <a class="btn-primary btn-sm" href="{{ url_for('public.index') }}" target="_blank" rel="noopener">
+                        Open public form {{ svg('arrow-right', 'ic-xs') }}
+                    </a>
+                </div>
+            </div>
+            {% endif %}
+
+        </section>
+    </main>
+</div>
+{% endblock %}

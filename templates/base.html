@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <title>{% block title %}AMUAA Admin{% endblock %}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="icon" type="image/png" href="{{ url_for('public.assets', filename='AMUAA-IPS-LOGO-2026.png') }}">
+    <script>
+        /* Applied before first paint so the theme never flashes. */
+        document.documentElement.dataset.theme =
+            localStorage.getItem("amuaa-theme") === "dark" ? "dark" : "light";
+    </script>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='admin.css') }}">
+    {% block head %}{% endblock %}
+</head>
+
+<body class="admin-body">
+    <a class="skip-link" href="#main-content">Skip to main content</a>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="flash-container" role="status" aria-live="polite">
+        {% for category, message in messages %}
+        <div class="flash flash-{{ category }}">
+            <span class="sr-only">{{ {'success':'Done','danger':'Problem','warning':'Warning','info':'Note'}.get(category, 'Notice') }}:</span>
+            {{ message }}
+        </div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+    {% block content %}{% endblock %}
+    <script src="{{ url_for('static', filename='admin.js') }}"></script>
+    {% block scripts %}{% endblock %}
+</body>
+
+</html>

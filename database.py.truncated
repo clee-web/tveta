@@ -1,0 +1,82 @@
+def _ensure_columns(db, table, columns):
+    """Add columns that are missing from an existing table (simple migration)."""
+    existing = {r["name"] for r in db.execute(f"PRAGMA table_info({table})").fetchall()}
+    for name, ddl in columns.items():
+        if name not in existing:
+            db.execute(f"ALTER TABLE {table} ADD COLUMN {name} {ddl}")
+
+
+DEFAULT_COURSES = [
+    ("I.C.T Courses", "ICT"),
+    ("Hairdressing & Beauty Therapy", "BEAUTY"),
+    ("Fashion & Design", "FASHION"),
+    ("Business Courses", "BUSINESS"),
+    ("Social Work & Community Development", "SOCIAL"),
+    ("Food & Beverage", "FOOD"),
+    ("Languages", "LANG"),
+    ("Video & Photography", "MEDIA"),
+    ("Nursing Aid / Care Giving", "NURSING"),
+]
+
+
+def _seed_departments_and_courses(db):
+    """Create a default department and seed the original course list once."""
+    if db.execute("SELECT COUNT(*) AS c FROM courses").fetchone()["c"] > 0:
+        return
+
+    now = datetime.utcnow().isoformat()
+    dept = db.execute(
+        "SELECT id FROM departments ORDER BY id LIMIT 1"
+    ).fetchone()
+    if not dept:
+        db.execute(
+            "INSERT INTO departments (name, description, created_at) VALUES (?, ?, ?)",
+            (
+                "General Programmes",
+                "Default department. Rename it or add your own.",
+                now,
+            ),
+        )
+        dept = db.execute(
+            "SELECT id FROM departments ORDER BY id LIMIT 1"
+        ).fetchone()
+
+    for name, code in DEFAULT_COURSES:
+        db.execute(
+            """INSERT INTO courses
+               (department_id, name, code, qualification, duration, exam_body, created_at)
+               VALUES (?, ?, ?, '', '', '', ?)""",
+            (dept["id"], name, code, now),
+        )
+
+
+def _course_code(name):
+    """Derive a short uppercase code from a course name."""
+    key = (name or "").strip()
+    for default_name, default_code in DEFAULT_COURSES:
+        if default_name.lower() == key.lower():
+            return default_code
+    words = [w for w in re.split(r"[^A-Za-z]+", key) if w]
+    if not words:
+        return "GEN"
+    if len(words) == 1:
+        return words[0][:5].upper()
+    return "".join(w[0] for w in words)[:6].upper()
+
+
+def _backfill_course_codes(db):
+    rows = db.execute(
+        "SELECT id, name FROM courses WHERE code IS NULL OR code = ''"
+    ).fetchall()
+    for row in rows:
+        db.execute(
+            "UPDATE courses SET code = ? WHERE id = ?",
+            (_course_code(row["name"]), row["id"]),
+        )
+
+
+def _backfill_academic_year(db):
+    db.execute(
+        "UPDATE applications SET academic_year = substr(created_at, 1, 4) "
+        "WHERE academic_year IS NULL"
+    )
