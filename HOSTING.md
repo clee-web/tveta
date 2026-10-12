@@ -1,4 +1,8 @@
-# Hosting on cPanel (Setup Python App)
+# Hosting
+
+Two supported targets: cPanel's **Setup Python App** (steps 1–8, and the source
+of `amuaa-cpanel.zip`) and Render or any similar PaaS that starts the app with a
+shell command (step 9).
 
 The app is a plain Flask 3 program with an SQLite database. cPanel's
 **Setup Python App** runs it through Apache + Phusion Passenger, so there is no
@@ -121,3 +125,44 @@ chose in step 2 (`logs/app_error.log`):
   on, or `SESSION_COOKIE_SECURE` was set while serving over HTTP.
 - `attempt to write a readonly database` — the app **folder** needs write
   permission, not just the `.db` file.
+
+## 9. Deploying on Render (or any `gunicorn`-style PaaS)
+
+Render builds from the Git repo, installs `requirements.txt`, then runs a shell
+**Start Command**. Its Flask template ships the placeholder
+`gunicorn your_application.wsgi`, which fails twice over: there is no module
+called `your_application` here, and gunicorn is not installed. Both are fixed on
+the service settings:
+
+| Setting | Value |
+| --- | --- |
+| Build command | `pip install -r requirements.txt` (Render runs this automatically when it detects the file) |
+| Start command | `gunicorn --bind 0.0.0.0:$PORT --timeout 120 run:app` |
+| Environment | `SECRET_KEY` (required), `ADMIN_USERNAME`, `ADMIN_PASSWORD`, plus any `MAIL_*` |
+
+`run:app` is the WSGI object — `run.py` builds it at import time with
+`app = create_app()`. The `Procfile` in the repo carries the same command, but a
+Start Command typed in the dashboard wins, so set it in both or just in the
+dashboard. Binding to `0.0.0.0:$PORT` is not optional: gunicorn defaults to
+`127.0.0.1:8000`, and Render routes traffic to the port it advertises in `PORT`,
+so anything else deploys "successfully" and then returns 502.
+
+**The data will not survive.** Render's filesystem is reset on every deploy and
+restart, so `database.db` and everything under `uploads/` (photos, documents,
+exam papers) revert to whatever was committed to Git. To keep real applications
+there you need a **Disk** attached to the service (paid instance types only),
+mounted at a path such as `/var/data`, with:
+
+```
+DB_PATH=/var/data/database.db
+```
+
+`uploads/` has no environment override — it is always the folder beside the app —
+so on Render either accept that uploaded files are temporary, or mount the Disk
+at the app's `uploads` path. If you would rather not pay for a Disk, cPanel
+(steps 1–8 above) keeps the same SQLite file on ordinary hosting.
+
+Also note that Render's default Python may be older than the one you develop
+with. The app needs 3.10 or newer; if the build log shows a `SyntaxError`, set
+`PYTHON_VERSION` (for example `3.12`) in the environment and redeploy.
+

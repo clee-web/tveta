@@ -6,3 +6,6 @@ qrcode==8.2
 # qrcode.make() renders PNGs through Pillow; the exam cards and QR slips need it.
 Pillow==11.3.0
 openpyxl==3.1.5
+# Only needed on PaaS hosts (Render, Railway, Fly) that start the app with a shell
+# command. cPanel/Passenger serves the WSGI file directly and ignores this.
+gunicorn==23.0.0

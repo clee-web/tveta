@@ -285,10 +285,6 @@ a {
     width: 176px;
     height: 100px;
     object-fit: contain;
-    padding: 10px;
-    background: #fff;
-    border-radius: var(--r-lg);
-    box-shadow: 0 8px 24px rgba(118, 43, 58, .18);
 }
 
 .subtitle {
@@ -362,10 +358,7 @@ a {
 .brand-logo {
     width: 70px;
     height: 40px;
-    border-radius: 9px;
     object-fit: contain;
-    background: #fff;
-    padding: 2px;
     flex: none;
 }
 
