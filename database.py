@@ -329,7 +329,6 @@ DEFAULT_COURSES = [
     ("Social Work & Community Development", "SOCIAL"),
     ("Food & Beverage", "FOOD"),
     ("Languages", "LANG"),
-    ("Spanish", "SPANISH"),
     ("Video & Photography", "MEDIA"),
     ("Nursing Aid / Care Giving", "NURSING"),
 ]
