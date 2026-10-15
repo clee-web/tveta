@@ -113,15 +113,17 @@ if DEBUG:
 else:
     _SECRET_KEY = os.environ.get("SECRET_KEY")
     if not _SECRET_KEY:
-        # Booting anyway would leave each Passenger worker signing with its own
-        # throwaway key, so logins would fail at random instead of once, clearly.
+        # Booting anyway would leave each worker signing with its own throwaway
+        # key, so logins would fail at random instead of once, clearly.
         raise RuntimeError(
             "SECRET_KEY is required to run outside debug mode.\n"
             "  Just working on the app locally? Turn debug on instead:\n"
             "      cmd>          set FLASK_DEBUG=1 && py run.py\n"
             "      PowerShell>   $env:FLASK_DEBUG=1; py run.py\n"
-            "  Deploying to a host? Generate a key and add it in cPanel -> Setup Python\n"
-            "  App -> Add Environment Variable (see HOSTING.md):\n"
+            "  Deploying to a host? Generate a key, then add it as an environment\n"
+            "  variable and redeploy - Render: Environment -> Add Environment\n"
+            "  Variable; cPanel: Setup Python App -> Add Environment Variable\n"
+            "  (see HOSTING.md):\n"
             '      python -c "import secrets; print(secrets.token_hex(32))"\n'
             "  Keep it private, and never change it once the site is live, or every\n"
             "  session is invalidated."
